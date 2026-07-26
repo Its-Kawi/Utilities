@@ -54,19 +54,20 @@ local wf, rf, mf, IF, df, DF, re = writefile or write_file, readfile or read_fil
 local loadstring, tonumber, game, error, warn, freeze, spawn, pcall, tick, tostring = loadstring or load, tonumber, game, error, warn, table.freeze, task and task.spawn or spawn, pcall, tick, tostring
 local utilityPrefix = "-- This is the main utility loader. Its used for quickly loading without needing to be downloaded\n"
 
-local function httpGet(url)
+local function httpGet(url, headers)
 	if re then
-		local r = re({ Url = url, Method = "GET" })
-		return r.Success, r.Body
+		local r = re({ Url = url, Method = "GET", Headers = headers })
+		return r.Body or "", r.Success
 	else
-		return pcall(game.HttpGet, game, url, true)
+		local s, r = pcall(game.HttpGet, game, url, true, headers)
+		return s, r
 	end
 end
 
 if wf and rf and mf and df and IF and DF then
 	local isf = IF(utilVerCheckFile)
 	if isf and tick() - tonumber(rf(utilVerCheckFile)) > 10800 or not isf then
-		local s, self = httpGet(subUrls.Util .. "Utility/Main" .. ext)
+		local self, s = httpGet(subUrls.Util .. "Utility/Main" .. ext)
 		if s then
 			local loadTest = loadstring(self)
 			
@@ -85,7 +86,7 @@ if wf and rf and mf and df and IF and DF then
 	end
 
 	spawn(function()
-		local s, self = httpGet(subUrls.Util .. "Utility/Main" .. ext)
+		local self, s = httpGet(subUrls.Util .. "Utility/Main" .. ext)
 		if s and loadstring(self) then
 			pcall(mf, coreFolder:sub(1, -2))
 			pcall(mf, utilsFolder:sub(1, -2))
@@ -157,7 +158,7 @@ function downloadModule(name, forceDownload)
 	local moduleName, moduleType = getModuleInfo(name)
 	
 	if not forceDownload then local ret = try(moduleName, true) if ret then return ret end end
-	local s, moduleContents = httpGet(moduleType == "Download" and moduleName or moduleType == "Url" and urls[moduleName] or subUrls[moduleType] .. moduleName .. "/Main" .. ext)
+	local moduleContents, s = httpGet(moduleType == "Download" and moduleName or moduleType == "Url" and urls[moduleName] or subUrls[moduleType] .. moduleName .. "/Main" .. ext)
 	if not s or moduleContents:gsub("[\n\r\f\t\0 ]", "") == "" or #moduleContents < #utilityPrefix + 5 then
 		return downloadModule(name, true)
 	end
@@ -207,7 +208,20 @@ local util = setmetatable({
 	LoadModule = function(self, ...) return self:Load(...) end,
 	Modules = modules,
 	Utililites = modules,
-	Utils = modules
+	Utils = modules,
+	
+	HttpGet = function(self, url, headers)
+		return httpGet(url, headers)
+	end,
+	HttpPost = function(self, url, body, headers)
+		if re then
+			local r = re({ Url = url, Method = "GET", Headers = headers })
+			return r.Body, r.Success
+		else
+			local s, r = pcall(game.HttpPost, game, url, body, headers)
+			return r, s
+		end
+	end
 }, freeze({
 	__index = function(_, name)
 		local safeName = name:gsub("[\n\r\f\t\s\0 ]", ""):lower()
