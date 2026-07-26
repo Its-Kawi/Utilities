@@ -50,14 +50,23 @@ local utilFile = coreFolder .. "Utility" .. ext
 local utilVerCheckFile = coreFolder .. "VCheck.txt"
 local utilsFolder = coreFolder .. "Utilities/"
 
-local wf, rf, mf, IF, df, DF = writefile or write_file, readfile or read_file, makefolder or make_folder, isfile or is_file, deletefolder or delfolder or removefolder or delete_folder or del_folder or remove_folder, deletefile or delfile or removefile or delete_file or del_fire or remove_file
+local wf, rf, mf, IF, df, DF, re = writefile or write_file, readfile or read_file, makefolder or make_folder, isfile or is_file, deletefolder or delfolder or removefolder or delete_folder or del_folder or remove_folder, deletefile or delfile or removefile or delete_file or del_fire or remove_file, request or http_request
 local loadstring, tonumber, game, error, warn, freeze, spawn, pcall, tick, tostring = loadstring or load, tonumber, game, error, warn, table.freeze, task and task.spawn or spawn, pcall, tick, tostring
 local utilityPrefix = "-- This is the main utility loader. Its used for quickly loading without needing to be downloaded\n"
+
+local function httpGet(url)
+	if re then
+		local r = re({ Url = url, Method = "GET" })
+		return r.Success, r.Body
+	else
+		return pcall(game.HttpGet, game, url, true)
+	end
+end
 
 if wf and rf and mf and df and IF and DF then
 	local isf = IF(utilVerCheckFile)
 	if isf and tick() - tonumber(rf(utilVerCheckFile)) > 10800 or not isf then
-		local s, self = pcall(game.HttpGet, game, subUrls.Util .. "Utility/Main" .. ext, true)
+		local s, self = httpGet(subUrls.Util .. "Utility/Main" .. ext)
 		if s then
 			local loadTest = loadstring(self)
 			
@@ -76,7 +85,7 @@ if wf and rf and mf and df and IF and DF then
 	end
 
 	spawn(function()
-		local s, self = pcall(game.HttpGet, game, subUrls.Util .. "Utility/Main" .. ext, true)
+		local s, self = httpGet(subUrls.Util .. "Utility/Main" .. ext)
 		if s and loadstring(self) then
 			pcall(mf, coreFolder:sub(1, -2))
 			pcall(mf, utilsFolder:sub(1, -2))
@@ -148,7 +157,7 @@ function downloadModule(name, forceDownload)
 	local moduleName, moduleType = getModuleInfo(name)
 	
 	if not forceDownload then local ret = try(moduleName, true) if ret then return ret end end
-	local s, moduleContents = pcall(game.HttpGet, game, moduleType == "Download" and moduleName or moduleType == "Url" and urls[moduleName] or subUrls[moduleType] .. moduleName .. "/Main" .. ext, true)
+	local s, moduleContents = httpGet(moduleType == "Download" and moduleName or moduleType == "Url" and urls[moduleName] or subUrls[moduleType] .. moduleName .. "/Main" .. ext)
 	if not s or moduleContents:gsub("[\n\r\f\t\0 ]", "") == "" or #moduleContents < #utilityPrefix + 5 then
 		return downloadModule(name, true)
 	end
