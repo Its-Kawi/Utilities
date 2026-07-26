@@ -57,27 +57,27 @@ local utilityPrefix = "-- This is the main utility loader. Its used for quickly 
 if wf and rf and mf and df and IF and DF then
 	local isf = IF(utilVerCheckFile)
 	if isf and tick() - tonumber(rf(utilVerCheckFile)) > 10800 or not isf then
-		local self = game:HttpGet(subUrls.Util .. "Utility/Main" .. ext, true)
-		local loadTest = loadstring(self)
-		
-		if loadTest then
-			pcall(df, coreFolder:sub(1, -2))
-			pcall(DF, "FireLibrary/Library" .. ext) -- force UI library to update
+		local s, self = pcall(game.HttpGet, game, subUrls.Util .. "Utility/Main" .. ext, true)
+		if s then
+			local loadTest = loadstring(self)
 			
-			pcall(mf, coreFolder:sub(1, -2))
-			pcall(mf, utilsFolder:sub(1, -2))
-			pcall(wf, utilFile, utilityPrefix .. self)
-			pcall(wf, utilVerCheckFile, tostring(tick()))
-			
-			return loadTest()
-		else
-			error("Failed to update Utility", 0)
+			if loadTest then
+				pcall(df, coreFolder:sub(1, -2))
+				pcall(DF, "FireLibrary/Library" .. ext) -- force UI library to update
+				
+				pcall(mf, coreFolder:sub(1, -2))
+				pcall(mf, utilsFolder:sub(1, -2))
+				pcall(wf, utilFile, utilityPrefix .. self)
+				pcall(wf, utilVerCheckFile, tostring(tick()))
+				
+				return loadTest()
+			end
 		end
 	end
 
 	spawn(function()
-		local self = game:HttpGet(subUrls.Util .. "Utility/Main" .. ext, true)
-		if loadstring(self) then
+		local s, self = pcall(game.HttpGet, game, subUrls.Util .. "Utility/Main" .. ext, true)
+		if s and loadstring(self) then
 			pcall(mf, coreFolder:sub(1, -2))
 			pcall(mf, utilsFolder:sub(1, -2))
 			pcall(wf, utilFile, utilityPrefix .. self)
