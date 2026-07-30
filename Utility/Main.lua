@@ -215,7 +215,7 @@ local util = setmetatable({
 	end,
 	HttpPost = function(self, url, body, headers)
 		if re then
-			local r = re({ Url = url, Method = "GET", Headers = headers })
+			local r = re({ Url = url, Method = "POST", Body = body, Headers = headers })
 			return r.Body, r.Success
 		else
 			local s, r = pcall(game.HttpPost, game, url, body, headers)
