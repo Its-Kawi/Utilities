@@ -1,3 +1,15 @@
+local env = getfenv()
+local function g(n)
+	return env[n]
+end
+
+local global = (g("getgenv") or function() return _G end)()
+local key = "NFOtherLib"
+
+if global[key] then
+	return global[key]
+end
+
 local max, min = math.max, math.min
 local c3n = Color3.new
 local c3h = Color3.fromHSV
@@ -7,11 +19,15 @@ local abs = math.abs
 local clamp = math.clamp
 
 local pack, concat = table.pack, table.concat
-local function memoize(fn)
+local function memoize(fn, skipFirst)
 	local cache = setmetatable({ }, { __mode = "k" })
 
 	return function(...)
 		local args = pack(...)
+		if skipFirst then
+			args[1] = ""
+		end
+		
 		local key = args.n ~= 0 and concat(args, "\0") or ""
 
 		local result = cache[key]
@@ -51,7 +67,7 @@ local richReplace = {
 	["&"] = "&amp;"
 }
 
-return {
+local lib = {
 	Smart = function(self, str: string)
 		if #str <= 1 then return str end
 		
@@ -84,7 +100,7 @@ return {
 		end
 
 		return res
-	end),
+	end, true),
 	RotateColor = function(self, color, pattern)
 		pattern = pattern or defaultRotationPattern
 
@@ -117,8 +133,11 @@ return {
 	end,
 	RichEscape = memoize(function(self, str)
 		return str:gsub("[&<>'\"%z]", richReplace)
-	end),
+	end, true),
 	Memoize = function(self, ...)
 		return memoize(...)
 	end
 }
+
+global[key] = lib
+return lib
