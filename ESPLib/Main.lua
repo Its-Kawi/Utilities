@@ -601,6 +601,10 @@ local function paintRichText(text, color3)
     return "<font color=\"#" .. color3:ToHex() .. "\">" .. text .. "</font>"
 end
 
+local function rotateRGB(col)
+    return c3n(col.G, col.R, col.B)
+end
+
 refresh = function(self)
     self = self.Self or self
     
@@ -638,8 +642,15 @@ refresh = function(self)
 
     local text = esp.TextLabel
     local topText = esp.TopTextLabel
+    local rgb = (settings.RGB or base.RGB or classSettings.RGB) and currentRGBColor
 
-    local color = (settings.RGB or base.RGB or classSettings.RGB) and currentRGBColor or settings.Color or classSettings.Color
+    local color = rgb
+    if not color then
+        color = settings.Color or classSettings.Color or c3n(1, 1, 1)
+        if settings.RotationLevel then
+            color = color:Lerp(rotateRGB(color), settings.RotationLevel)
+        end
+    end
 
     esp.Circle.BackgroundColor3 = color
     esp.StudsOffsetWorldSpace = pos
