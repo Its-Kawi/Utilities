@@ -4,10 +4,12 @@ local utils = {
 	Event = "Util",
 	Physics = "Util",
 	Typer = "Util",
+	Other = "Util",
+	Fire = "Util",
 	Desync = "Url",
 	UI = "Url",
 	NullFireWindow = "Url",
-	FunkyFridayAutoPlay = "Url"
+	FunkyFridayAutoPlay = "Url",
 }
 
 local utilGlobalKeys = {
@@ -18,7 +20,8 @@ local utilGlobalKeys = {
 	Desync = "DesyncLib",
 	UI = "FireLibrary",
 	NullFireWindow = "NFWINDOW",
-	FunkyFridayAutoPlay = "FFAutoplayLib"
+	FunkyFridayAutoPlay = "FFAutoplayLib",
+	Fire = "FIRELIB_omg_UI_lib_name_drop"
 }
 
 local ext = ".lua"
