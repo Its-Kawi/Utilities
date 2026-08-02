@@ -21,6 +21,7 @@ local utilGlobalKeys = {
 	UI = "FireLibrary",
 	NullFireWindow = "NFWINDOW",
 	FunkyFridayAutoPlay = "FFAutoplayLib",
+	Other = "NFOtherLib",
 	Fire = "FIRELIB_omg_UI_lib_name_drop"
 }
 
