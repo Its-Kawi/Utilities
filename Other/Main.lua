@@ -58,7 +58,7 @@ local isNumber = memoize(function(v)
 	return v >= '0' and v <= '9'
 end)
 
-local defaultRotationPattern = { "G", "R", "B" }
+local defaultRotationPattern = { "G", "B", "R" }
 local richReplace = {
 	["'"] = "&apos;",
 	['"'] = "&quot;",
