@@ -270,9 +270,21 @@ local touchpart = function(part, useOld)
 	(useOld and ofiretouchinterest or firetouchinterest)(part, part2, true)
 end
 
+local cds = { }
+local function doCD(obj, duration)
+	if duration <= 0 then return end
+	
+	cds[obj] = true
+	wait(duration)
+	cds[obj] = false
+end
+
 local lib = {
-	fireproximityprompt = function(pp : ProximityPrompt, hitTimes, distanceCheck)
-		if cd[pp] or distanceCheck and ((plr.Character and ((plr.Character.PrimaryPart and plr.Character):GetPivot().Position) or workspace.CurrentCamera.CFrame.Position) - getPosition(getHolder(pp))).Magnitude > pp.MaxActivationDistance + 0.1 then return end
+	fireproximityprompt = function(pp : ProximityPrompt, hitTimes, distanceCheck, cooldown)
+		if cds[pp] then return end
+		if distanceCheck and ((plr.Character and ((plr.Character.PrimaryPart and plr.Character):GetPivot().Position) or workspace.CurrentCamera.CFrame.Position) - getPosition(getHolder(pp))).Magnitude > pp.MaxActivationDistance + 0.1 then return end
+
+		spawn(doCD, pp, cooldown or 0)
 
 		if originalFPP then
 			spawn(_fireproximityprompt, pp, hitTimes)
