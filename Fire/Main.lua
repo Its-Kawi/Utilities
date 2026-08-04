@@ -240,22 +240,22 @@ spawn(pcall, function()
 		part.Anchored = true
 		part.CanCollide = false
 		part.Transparency = 1
-		
+
 		local pp = ins("ProximityPrompt", part)
 		pp.MaxActivationDistance = 0
-		
+
 		pp.Triggered:Once(function()
 			fppn = true
 		end)
 
 		spawn(fpp, pp)
 		rs(2)
-		
+
 		if fppn then
 			originalFPP = false
 			_fireproximityprompt = fpp
 		end
-		
+
 		pp:Destroy()
 		part:Destroy()
 	end
@@ -273,16 +273,16 @@ end
 local cds = { }
 local function doCD(obj, duration)
 	if duration <= 0 then return end
-	
+
 	cds[obj] = true
 	wait(duration)
 	cds[obj] = false
 end
 
 local lib = {
-	fireproximityprompt = function(pp : ProximityPrompt, hitTimes, distanceCheck, cooldown)
+	fireproximityprompt = function(pp : ProximityPrompt, hitTimes, distanceCheck, cooldown, extraDistance)
 		if cds[pp] then return end
-		if distanceCheck and ((plr.Character and ((plr.Character.PrimaryPart and plr.Character):GetPivot().Position) or workspace.CurrentCamera.CFrame.Position) - getPosition(getHolder(pp))).Magnitude > pp.MaxActivationDistance + 0.1 then return end
+		if distanceCheck and ((plr.Character and ((plr.Character.PrimaryPart or plr.Character):GetPivot().Position) or workspace.CurrentCamera and workspace.CurrentCamera.CFrame.Position or v3(0, 0, 0)) - getPosition(getHolder(pp))).Magnitude > pp.MaxActivationDistance + (extraDistance or 0.1) then return end
 
 		spawn(doCD, pp, cooldown or 0)
 
@@ -302,12 +302,12 @@ local lib = {
 
 		if hum then
 			if seatPart.Occupant then return end
-			
+
 			local old = seatPart:GetPivot()
 			seatPart:PivotTo(plr.Character.HumanoidRootPart:GetPivot())
-			
+
 			touchpart(seatPart, true)
-			
+
 			seatPart:PivotTo(old)
 		end
 	end
