@@ -8,8 +8,9 @@ local utils = {
 	Fire = "Util",
 	Desync = "Url",
 	UI = "Url",
-	NullFireWindow = "Url",
-	FunkyFridayAutoPlay = "Url",
+	NullFireWindow = "NF",
+	FunkyFridayAutoPlay = "NF",
+	PressureTubePuzzle = "NF"
 }
 
 local utilGlobalKeys = {
@@ -22,7 +23,8 @@ local utilGlobalKeys = {
 	NullFireWindow = "NFWINDOW",
 	FunkyFridayAutoPlay = "FFAutoplayLib",
 	Other = "NFOtherLib",
-	Fire = "FIRELIB_omg_UI_lib_name_drop"
+	Fire = "FIRELIB_omg_UI_lib_name_drop",
+	PressureTubePuzzle = "PressureTubes"
 }
 
 local ext = ".lua"
@@ -33,9 +35,13 @@ local subUrls = {
 
 local urls = {
 	UI = user .. "Fire-Library/refs/heads/main/QuickLoader" .. ext,
-	Desync = subUrls.Util .. "Physics/Desync" .. ext,
-	NullFireWindow = user .. "Null-Fire/refs/heads/main/Core/Libraries/Window/Main" .. ext,
-	FunkyFridayAutoPlay = user .. "Null-Fire/refs/heads/main/Core/Loaders/Funky-Friday/Autoplay" .. ext
+	Desync = subUrls.Util .. "Physics/Desync" .. ext
+}
+
+local nfPaths = {
+	NullFireWindow = "Libraries/Window",
+	FunkyFridayAutoPlay = "Funky-Friday/Autoplay",
+	PressureTubePuzzle = "Pressure/TubePuzzle"
 }
 
 local shortcuts = {
@@ -74,16 +80,16 @@ if wf and rf and mf and df and IF and DF then
 		local self, s = httpGet(subUrls.Util .. "Utility/Main" .. ext)
 		if s then
 			local loadTest = loadstring(self)
-			
+
 			if loadTest then
 				pcall(df, coreFolder:sub(1, -2))
 				pcall(DF, "FireLibrary/Library" .. ext) -- force UI library to update
-				
+
 				pcall(mf, coreFolder:sub(1, -2))
 				pcall(mf, utilsFolder:sub(1, -2))
 				pcall(wf, utilFile, utilityPrefix .. self)
 				pcall(wf, utilVerCheckFile, tostring(tick()))
-				
+
 				return loadTest()
 			end
 		end
@@ -98,7 +104,7 @@ if wf and rf and mf and df and IF and DF then
 			pcall(wf, utilVerCheckFile, tostring(tick()))
 		end
 	end)
-	
+
 	pcall(mf, coreFolder:sub(1, -2))
 	pcall(mf, utilsFolder:sub(1, -2))
 end
@@ -119,14 +125,14 @@ local function getModuleInfo(name)
 	if name:sub(1, 4):lower() == "http" then
 		return name, "Download"
 	end
-	
+
 	local _, full = tableSearch(name, shortcuts)
 	full = full or name
 	if not full then error("Module not found: " .. name, 0) end
-	
+
 	local _, moduleType = tableSearch(full, utils)
 	if not moduleType then error("Module not found: " .. full, 0) end
-	
+
 	return full, moduleType
 end
 
@@ -152,7 +158,7 @@ local function try(moduleName, doUpdate)
 			if doUpdate then
 				spawn(downloadModule, moduleName, true)
 			end
-			
+
 			return function() return found end
 		end
 	end
@@ -160,13 +166,13 @@ end
 
 function downloadModule(name, forceDownload)
 	local moduleName, moduleType = getModuleInfo(name)
-	
+
 	if not forceDownload then local ret = try(moduleName, true) if ret then return ret end end
-	local moduleContents, s = httpGet(moduleType == "Download" and moduleName or moduleType == "Url" and urls[moduleName] or subUrls[moduleType] .. moduleName .. "/Main" .. ext)
+	local moduleContents, s = httpGet(moduleType == "Download" and moduleName or moduleType == "Url" and urls[moduleName] or moduleType == "NF" and (nfPaths[moduleName]:sub(1, 9) == "Libraries" and "https://raw.githubusercontent.com/Null-Cherry/Null-Fire/refs/heads/main/Core/" or "https://raw.githubusercontent.com/Null-Cherry/Null-Fire/refs/heads/main/Core/Loaders/") .. nfPaths[moduleName] .. (nfPaths[moduleName]:sub(1, 9) == "Libraries" and "/Main" or "") .. ext or subUrls[moduleType] .. moduleName .. "/Main" .. ext)
 	if not s or moduleContents:gsub("[\n\r\f\t\0 ]", "") == "" or #moduleContents < #utilityPrefix + 5 then
 		return downloadModule(name, true)
 	end
-	
+
 	if not forceDownload then local ret = try(moduleName, false) if ret then return ret end end
 	local loadTest = loadstring(moduleContents)
 
@@ -185,7 +191,7 @@ local function bruteforceLoadModule(name)
 		if success then
 			return func
 		end
-		
+
 		warn("Download failed:", func)
 		wait()
 	end
@@ -213,7 +219,7 @@ local util = setmetatable({
 	Modules = modules,
 	Utililites = modules,
 	Utils = modules,
-	
+
 	HttpGet = function(self, url, headers)
 		return httpGet(url, headers)
 	end,
@@ -231,10 +237,10 @@ local util = setmetatable({
 		local safeName = name:gsub("[\n\r\f\t\s\0 ]", ""):lower()
 		local c = returnCache[safeName]
 		if c then return c end
-		
+
 		local retF = function(self) return self:Load(name) end
 		returnCache[safeName] = retF
-		
+
 		return retF
 	end,
 	__newindex = error,
