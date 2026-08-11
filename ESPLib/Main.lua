@@ -4,7 +4,6 @@
 --
 
 -- Create objects
-local parent = nil;
 local objects = {
     ["Instance0"] = Instance.new("ModuleScript");
     ["Instance1"] = Instance.new("ModuleScript");
@@ -437,8 +436,8 @@ end or function(line, visible, to, color)
 
     local direction = (to - fromPoint)
     local center = (to + fromPoint) / 2
-    line.Position = u2(0, round(center.X), 0, round(center.Y))
-    line.Rotation = deg(round(atan2(round(direction.Y), round(direction.X)) * 100) / 100)
+    line.Position = u2(0, center.X, 0, center.Y)
+    line.Rotation = deg(atan2(direction.Y, direction.X))
     line.Size =  u2(0, direction.Magnitude, 0, 1)
     line.BackgroundColor3 = color
     line.Visible = true
@@ -501,7 +500,7 @@ local base = {
         for i, v in options do
             class[i] = v
         end
-        
+
         return class
     end
 }
@@ -510,80 +509,14 @@ local cam = workspace.CurrentCamera
 local f = 50
 local myPos = cam and cam.CFrame or CFrame.new()
 
-local function rotateRGB(col)
-    return c3n(col.B, col.R, col.G)
-end
-
-local function colorUpdate(self)
-    local settings = self.Settings
-    local class = settings.Class
-    local classSettings = base.ClassSettings[class]
-
-    local isRGB = settings.RGB or base.RGB or classSettings.RGB
-    local rgb = isRGB and currentRGBColor
-
-    local color = rgb
-    if not color then
-        color = settings.Color or classSettings.Color or c3n(1, 1, 1)
-        if settings.RotationLevel then
-            color = color:Lerp(rotateRGB(color), settings.RotationLevel)
-        end
-    end
-
-    local esp = self.ESP
-    local highlight = esp.Highlight
-
-    esp.Circle.BackgroundColor3 = color
-    highlight.FillColor = color
-    highlight.OutlineColor = color
-    esp.TextLabel.TextColor3 = color
-    esp.TopTextLabel.TextColor3 = color
-
-    return color, isRGB
-end
-
-local function getVector2(pos)
-    if not cam then return nil end
-
-    local v3 = cam:WorldToViewportPoint(pos)
-    if v3.Z < 0 or base.Performant and (v3.X < -f or v3.X > maxX or v3.Y < -f or v3.Y > maxY) then return nil end
-
-    return v2(v3.X, v3.Y - topb.AbsoluteSize.Y)
-end
-
-local getPosition; getPosition = function(obj)
-    if not obj or not obj:IsDescendantOf(workspace) or obj == workspace then
-        return v3()
-    elseif obj:IsA("Folder") then
-        local pos = v3()
-        local total = 0
-
-        for _, v in obj:GetChildren() do
-            if v:IsA("Model") or v:IsA("BasePart") then
-                pos += getPosition(v)
-                total += 1
-            end
-        end
-
-        return pos / total
-    elseif obj:IsA("Camera") then
-        return obj.CFrame.Position
-    elseif obj:IsA("Model") or obj:IsA("BasePart") then
-        return obj:GetPivot(obj).Position
-    else
-        return getPosition(obj.Parent)
-    end
-end
-
-local needsRefresh = { }
 game:GetService("RunService").RenderStepped:Connect(function()
     local currentTick = tick()
     time += (currentTick - lastTick) * base.RGBSpeed
     lastTick = currentTick
-    
+
     currentRGBColor = hsv(time % 1, 1, 1):Lerp(c3n(1, 1, 1), base.RGBWhite)
     cam = workspace.CurrentCamera or cam.Parent == workspace and cam or nil
-    
+
     maxX = (cam and cam.ViewportSize.X or topb.AbsoluteSize.X) + f
     maxY = (cam and cam.ViewportSize.Y or 0) + f
 
@@ -608,25 +541,9 @@ game:GetService("RunService").RenderStepped:Connect(function()
 
     myPos = plr and plr.Character and plr.Character:GetPivot() or cam and cam.CFrame or myPos
 
-    for v, t in needsRefresh do
-        if t == 1 then
-            colorUpdate(v)
-        elseif t == 2 then
-            local v2 = getVector2(getPosition(v.Object))
-            local esp = v.ESP
-            local highlight = esp.Highlight
-            
-            if v2 then
-                esp.Enabled = true
-                highlight.Enabled = v.Settings.Highlight
-                updateLine(v.Line, true, v2, (colorUpdate(v)))
-            else
-                esp.Enabled = false
-                highlight.Enabled = false
-                updateLine(v.Line, false)
-            end
-        else
-            refresh(v)
+    for _, v in ESPs do
+        for _, v2 in v do
+            refresh(v2)
         end
     end
 end)
@@ -640,33 +557,64 @@ local function destroy(self)
         ESPs[self.Settings.Class][self.Object] = nil
         espCache[self.Object] = nil
     end
-    
+
     self.ESP:Destroy()
     self.Line:Destroy()
     self.Connection:Disconnect()
-    
-    needsRefresh[self] = nil
-    
+
     rawset(self, "Destroyed", true)
     rawset(self, "ESP", nil)
     rawset(self, "Connection", nil)
     rawset(self, "Line", nil)
 end
 
+local function getVector2(pos)
+    if not cam then return nil end
+
+    local v3 = cam:WorldToViewportPoint(pos)
+    if v3.Z < 0 or base.Performant and (v3.X < -f or v3.X > maxX or v3.Y < -f or v3.Y > maxY) then return nil end
+
+    return v2(v3.X, v3.Y - topb.AbsoluteSize.Y)
+end
+
+local getPosition; getPosition = function(obj)
+    if obj:IsA("Folder") then
+        local pos = v3()
+        local total = 0
+
+        for _, v in obj:GetChildren() do
+            if v:IsA("Model") or v:IsA("BasePart") then
+                pos += getPosition(v)
+                total += 1
+            end
+        end
+
+        return pos / total
+    elseif obj:IsA("Camera") then
+        return obj.CFrame.Position
+    end
+
+    return obj:GetPivot(obj).Position
+end
+
 local function paintRichText(text, color3)
     return "<font color=\"#" .. color3:ToHex() .. "\">" .. text .. "</font>"
 end
 
+local function rotateRGB(col)
+    return c3n(col.G, col.R, col.B)
+end
+
 refresh = function(self)
     self = self.Self or self
-    
+
     if self.Destroyed then return end
 
     local esp = self.ESP
     local settings = self.Settings
     local obj = self.Object
     local line = self.Line
-    
+
     if not obj then
         return destroy(self)
     end
@@ -692,42 +640,50 @@ refresh = function(self)
         return updateLine(line, false)
     end
 
-    esp.StudsOffsetWorldSpace = pos
-    
     local text = esp.TextLabel
     local topText = esp.TopTextLabel
-    
+    local rgb = (settings.RGB or base.RGB or classSettings.RGB) and currentRGBColor
+
+    local color = rgb
+    if not color then
+        color = settings.Color or classSettings.Color or c3n(1, 1, 1)
+        if settings.RotationLevel then
+            color = color:Lerp(rotateRGB(color), settings.RotationLevel)
+        end
+    end
+
+    esp.Circle.BackgroundColor3 = color
+    esp.StudsOffsetWorldSpace = pos
+
+    highlight.FillColor = color
+    highlight.OutlineColor = color
     highlight.Adornee = typeof(settings.HighlightAdornee) == "Instance" and settings.HighlightAdornee or obj
     highlight.Enabled = settings.Highlight
 
     text.Text = settings.Text
-    
+    text.TextColor3 = color
+
     local afterText = ""
-    local sd = settings.ShowDistance or classSettings.ShowDistance and base.ShowDistance
-    
-    if sd then
+    if settings.ShowDistance or classSettings.ShowDistance and base.ShowDistance then
         local target = plr and plr.Character or cam
         local dist = 0
-        
+
         if target then
             dist = (getPosition(target) - pos).Magnitude
         end
-        
+
         local gradient = settings.DistanceGradient or classSettings.DistanceGradient or base.DistanceGradient
         afterText = paintRichText("\n[ " .. (dist >= 10 and round(dist) or ("%.1f"):format(dist)) .. " ]", gradient[2]:Lerp(gradient[3], clamp(dist / gradient[1], 0, 1)))
     end
 
     topText.Text = settings.TopText .. afterText
-    
-    local color, isRGB = colorUpdate(self)
+    topText.TextColor3 = color
+
     local tracerEnabled = settings.Tracer or classSettings.Tracers and base.Tracers
-    
     if opened or not tracerEnabled then
-        needsRefresh[self] = sd and 3 or 1
         return updateLine(line, false)
     end
 
-    needsRefresh[self] = sd and 3 or 2
     updateLine(line, true, vec, color)
 end
 
@@ -782,13 +738,13 @@ local function newObject(object, settings, class)
     v = setmetatable({ Object = object, Settings = settings, ESP = espObj, Line = tracerLine, Destroy = destroy, Connection = object.Destroying:Connect(function()
         v:Destroy()
     end) }, objectBase)
-    
+
     rawset(settings, "Self", v)
 
     ESPs[settings.Class] = ESPs[settings.Class] or { }
     ESPs[settings.Class][object] = v
     espCache[object] = v
-    
+
     refresh(v)
     return v
 end
