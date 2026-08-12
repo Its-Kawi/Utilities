@@ -371,7 +371,7 @@ guiServ.MenuClosed:Connect(function()
 end)
 
 local function memoize(fn)
-    local cache = setmetatable({ }, { __mode = "k" })
+    --[[local cache = setmetatable({ }, { __mode = "k" })
 
     return function(...)
         local args = pack(...)
@@ -386,7 +386,9 @@ local function memoize(fn)
         cache[key] = result
 
         return unpack(result, 1, result.n)
-    end
+    end]]
+    
+    return fn
 end
 
 local deg, atan2 = memoize(math.deg), memoize(math.atan2)
