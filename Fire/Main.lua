@@ -46,8 +46,6 @@ setupFPP()
 
 local lib
 local disconnected = false
-local pingTE = tick()
-local prevPing = plr:GetNetworkPing()
 
 clock:Connect(function()
 	cam = workspace.CurrentCamera or cam
@@ -60,21 +58,67 @@ clock:Connect(function()
 
 	local cfr = cam.CFrame
 	fppobj:PivotTo(cfr + (cfr.LookVector / 5))
+end)
 
-	if not disconnected then
-		local cping = plr:GetNetworkPing()
-		if cping ~= prevPing then
-			prevPing = cping
-			pingTE = tick()
-			
-			if cping < 0 then
-				disconnected = true
+spawn(function()
+	repeat wait() until game:IsLoaded()
+	
+	local rrs = game:GetService("RobloxReplicatedStorage")
+	
+	local prevPing = plr:GetNetworkPing()
+	local pingChangeTime = prevPing * 10
+	
+	local ev = rrs and rrs:WaitForChild("GetServerVersion", prevPing + 1)
+	local pingTE = tick()
+	
+	if not ev then
+		while true do
+			if not disconnected then
+				local cping = plr:GetNetworkPing()
+				if cping ~= prevPing then
+					local ct = tick()
+					
+					prevPing = cping
+					pingChangeTime = (ct - pingTE) * 10
+					pingTE = ct
+
+					if cping < 0 then
+						disconnected = true
+					end
+				end
+			end
+
+			if lib then
+				lib.ping = disconnected and -1 or max(tick() - pingTE - pingChangeTime, prevPing)
+				
+				if disconnected then
+					break
+				end
 			end
 		end
-	end
-	
-	if lib then
-		lib.ping = disconnected and -1 or max(tick() - pingTE, prevPing)
+	else
+		spawn(function()
+			while wait() do
+				if lib then
+					lib.ping = disconnected and -1 or max(tick() - pingTE - pingChangeTime, prevPing)
+					
+					if disconnected then
+						break
+					end
+				end
+			end
+		end)
+		
+		while true do
+			local start = tick()
+			ev:InvokeServer()
+			
+			local ct = tick()
+			
+			pingChangeTime = (ct - pingTE) * 2
+			prevPing = ct - start
+			pingTE = ct
+		end
 	end
 end)
 
