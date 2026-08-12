@@ -43,7 +43,7 @@ local function memoize(fn, skipFirst)
 end
 
 local special = memoize(function(i)
-	return i == "" or i:lower() == i and i:upper() == i
+	return i == "" or i:upper() == i:lower()
 end)
 
 local isUpper = memoize(function(v)
@@ -87,7 +87,7 @@ local lib = {
 			local char = chars[i]
 			local prev = chars[i - 1] or ""
 
-			if special(char) and not isNumber(char) or special(prev) and not isNumber(prev) or isNumber(char) and isLower(prev) or isUpper(char) and isUpper(prev) and isLower(chars[i + 1] or "") then
+			if special(char) and not isNumber(char) or prev ~= "" and special(prev) and not isNumber(prev) or isNumber(char) and isLower(prev) or isUpper(char) and isUpper(prev) and isLower(chars[i + 1] or "") then
 				final ..= " "
 			end
 
