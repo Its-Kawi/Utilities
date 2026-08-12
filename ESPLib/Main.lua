@@ -437,7 +437,7 @@ end or function(line, visible, to, color)
     local direction = (to - fromPoint)
     local center = (to + fromPoint) / 2
     line.Position = u2(0, center.X, 0, center.Y)
-    line.Rotation = deg(atan2(direction.Y, direction.X))
+    line.Rotation = deg(round(atan2(round(direction.Y), round(direction.X)) * 140) / 140) -- 140 instead of 360 to save more space for quick memoizes and less memory
     line.Size =  u2(0, direction.Magnitude, 0, 1)
     line.BackgroundColor3 = color
     line.Visible = true
@@ -470,6 +470,7 @@ local base = {
     Performant = false,
     ShowDistance = true,
     Event = ev,
+    FPS = 40, -- good balance between laggy and smooth
     DistanceGradient = { 100, c3n(1, 0.4, 0.4), c3n(0.4, 1, 0.4) },
     ClassSettings = setmetatable({ }, {
         __index = function(self, idx)
@@ -508,11 +509,14 @@ local base = {
 local cam = workspace.CurrentCamera
 local f = 50
 local myPos = cam and cam.CFrame or CFrame.new()
+local target
+local tracers = false
 
-game:GetService("RunService").RenderStepped:Connect(function()
+game:GetService("RunService").Stepped:Connect(function()
     local currentTick = tick()
     time += (currentTick - lastTick) * base.RGBSpeed
     lastTick = currentTick
+    target = plr and plr.Character or cam
 
     currentRGBColor = hsv(time % 1, 1, 1):Lerp(c3n(1, 1, 1), base.RGBWhite)
     cam = workspace.CurrentCamera or cam.Parent == workspace and cam or nil
@@ -539,16 +543,40 @@ game:GetService("RunService").RenderStepped:Connect(function()
         fromPoint = v2(mouse.X, mouse.Y)
     end
 
-    myPos = plr and plr.Character and plr.Character:GetPivot() or cam and cam.CFrame or myPos
-
+    myPos = plr and plr.Character and plr.Character:GetPivot().Position or cam and cam.CFrame.Position or myPos
+    tracers = false
+    
     for _, v in ESPs do
+        if v.Tracers then
+            tracers = true
+            break
+        end
+        
         for _, v2 in v do
-            refresh(v2)
+            if v.Tracer then
+                tracers = true
+                break
+            end
+        end
+        
+        if tracers then
+            break
         end
     end
 end)
 
 local espCache = { }
+task.spawn(function()
+    local wait = task.wait
+    local spawn = task.spawn
+    
+    while wait((tracers and 1 or 0.5) / base.FPS) do
+        for _, v in espCache do
+            spawn(refresh, v)
+        end
+    end
+end)
+
 local function destroy(self)
     self = self.Self or self
     if self.Destroyed then return end
@@ -620,12 +648,6 @@ refresh = function(self)
     end
 
     local highlight = esp.Highlight
-    if not obj:IsDescendantOf(workspace) then
-        esp.Enabled = false
-        highlight.Enabled = false
-        return updateLine(line, false)
-    end
-
     local pos = getPosition(obj)
     local vec = getVector2(pos)
 
@@ -664,14 +686,10 @@ refresh = function(self)
     text.TextColor3 = color
 
     local afterText = ""
-    if settings.ShowDistance or classSettings.ShowDistance and base.ShowDistance then
-        local target = plr and plr.Character or cam
-        local dist = 0
-
-        if target then
-            dist = (getPosition(target) - pos).Magnitude
-        end
-
+    
+    if settings.ShowDistance or classSettings.ShowDistance and base.ShowDistance and target then
+        local dist = (myPos - pos).Magnitude
+            
         local gradient = settings.DistanceGradient or classSettings.DistanceGradient or base.DistanceGradient
         afterText = paintRichText("\n[ " .. (dist >= 10 and round(dist) or ("%.1f"):format(dist)) .. " ]", gradient[2]:Lerp(gradient[3], clamp(dist / gradient[1], 0, 1)))
     end
@@ -735,8 +753,10 @@ local function newObject(object, settings, class)
     local tracerLine = newLine()
     updateLine(tracerLine, false)
 
-    v = setmetatable({ Object = object, Settings = settings, ESP = espObj, Line = tracerLine, Destroy = destroy, Connection = object.Destroying:Connect(function()
-        v:Destroy()
+    v = setmetatable({ Object = object, Settings = settings, ESP = espObj, Line = tracerLine, Destroy = destroy, Connection = object.AncestryChanged:Connect(function()
+        if not v:IsDescendantOf(workspace) then
+            v:Destroy()
+        end
     end) }, objectBase)
 
     rawset(settings, "Self", v)
