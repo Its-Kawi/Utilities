@@ -20,7 +20,7 @@ local clamp = math.clamp
 
 local pack, concat = table.pack, table.concat
 local function memoize(fn, skipFirst)
-	local cache = setmetatable({ }, { __mode = "k" })
+	--[[local cache = setmetatable({ }, { __mode = "k" })
 
 	return function(...)
 		local args = pack(...)
@@ -39,7 +39,8 @@ local function memoize(fn, skipFirst)
 		cache[key] = result
 
 		return unpack(result, 1, result.n)
-	end
+	end]]
+	return fn
 end
 
 local special = memoize(function(i)
