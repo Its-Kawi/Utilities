@@ -439,7 +439,7 @@ end or function(line, visible, to, color)
     local direction = (to - fromPoint)
     local center = (to + fromPoint) / 2
     line.Position = u2(0, center.X, 0, center.Y)
-    line.Rotation = deg(round(atan2(round(direction.Y), round(direction.X)) * 140) / 140) -- 140 instead of 360 to save more space for quick memoizes and less memory
+    line.Rotation = deg(atan2(direction.Y, direction.X))
     line.Size =  u2(0, direction.Magnitude, 0, 1)
     line.BackgroundColor3 = color
     line.Visible = true
