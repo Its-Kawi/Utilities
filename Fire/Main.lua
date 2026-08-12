@@ -45,6 +45,7 @@ end
 setupFPP()
 
 local lib
+local disconnected = false
 local pingTE = tick()
 local prevPing = plr:GetNetworkPing()
 
@@ -60,14 +61,20 @@ clock:Connect(function()
 	local cfr = cam.CFrame
 	fppobj:PivotTo(cfr + (cfr.LookVector / 5))
 
-	local cping = plr:GetNetworkPing()
-	if cping ~= prevPing then
-		prevPing = cping
-		pingTE = tick()
+	if not disconnected then
+		local cping = plr:GetNetworkPing()
+		if cping ~= prevPing then
+			prevPing = cping
+			pingTE = tick()
+			
+			if cping < 0 then
+				disconnected = true
+			end
+		end
 	end
 	
 	if lib then
-		lib.ping = max(tick() - pingTE, prevPing)
+		lib.ping = disconnected and -1 or max(tick() - pingTE, prevPing)
 	end
 end)
 
