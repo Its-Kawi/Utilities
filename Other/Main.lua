@@ -43,7 +43,7 @@ local function memoize(fn, skipFirst)
 end
 
 local special = memoize(function(i)
-	return i:lower() == i and i:upper() == i
+	return i == "" or i:lower() == i and i:upper() == i
 end)
 
 local isUpper = memoize(function(v)
@@ -70,25 +70,37 @@ local richReplace = {
 local lib = {
 	Smart = function(self, str: string)
 		if #str <= 1 then return str end
-		
+
 		local chars = self:GetCharacters(str)
 		local result: string = chars[1]:upper()
 		for i = 2, #chars do
 			local v = chars[i]
 			local prev = chars[max(i - 1, 1)]
+
 			result ..= ((isUpper(v) and not isUpper(prev) or isUpper(v) and isUpper(prev) and isUpper(chars[max(i - 2, 1)]) and isLower(chars[min(i + 1, #str)])) and " " or "") .. v
 		end
 
 		local final = ""
-		for i = 1, #result do
-			local char = result:sub(i, i)
-			local prevChar = i > 1 and result:sub(i - 1, i - 1) or ""
+		chars = self:GetCharacters(result)
 
-			if isNumber(char) and isLower(prevChar) then
-				final = final .. " "
+		for i = 1, #chars do
+			local char = chars[i]
+			local prev = chars[i - 1] or ""
+
+			if special(char) and not isNumber(char) or special(prev) and not isNumber(prev) or isNumber(char) and isLower(prev) or isUpper(char) and isUpper(prev) and isLower(chars[i + 1] or "") then
+				final ..= " "
 			end
 
 			final ..= char
+		end
+
+		while true do
+			local new, changes = final:gsub("  ", " ")
+			if changes > 0 then
+				final = new
+			else
+				break
+			end
 		end
 
 		return final
