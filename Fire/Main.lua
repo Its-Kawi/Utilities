@@ -44,7 +44,7 @@ end
 setupFPP()
 clock:Connect(function()
 	cam = workspace.CurrentCamera or cam
-	currentPos = plr.Character and ((plr.Character.PrimaryPart and plr.Character):GetPivot().Position) or cam.CFrame.Position
+	currentPos = plr.Character and (plr.Character.PrimaryPart or plr.Character):GetPivot().Position or cam.CFrame.Position
 
 	if not fppobj:IsDescendantOf(workspace) then
 		fppobj = ins("Part")
