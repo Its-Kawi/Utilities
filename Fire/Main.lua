@@ -26,6 +26,7 @@ local max = math.max
 local game, workspace = game, workspace
 local pcall = pcall
 local typeof = typeof
+local tick = tick
 
 local cam = workspace.CurrentCamera or Instance.new("Camera")
 local currentPos = plr.Character and ((plr.Character.PrimaryPart and plr.Character):GetPivot().Position) or workspace.CurrentCamera.CFrame.Position
@@ -42,6 +43,11 @@ local function setupFPP()
 end
 
 setupFPP()
+
+local lib
+local pingTE = tick()
+local prevPing = plr:GetNetworkPing()
+
 clock:Connect(function()
 	cam = workspace.CurrentCamera or cam
 	currentPos = plr.Character and (plr.Character.PrimaryPart or plr.Character):GetPivot().Position or cam.CFrame.Position
@@ -53,6 +59,16 @@ clock:Connect(function()
 
 	local cfr = cam.CFrame
 	fppobj:PivotTo(cfr + (cfr.LookVector / 5))
+
+	local cping = plr:GetNetworkPing()
+	if cping ~= prevPing then
+		prevPing = cping
+		pingTE = tick()
+	end
+	
+	if lib then
+		lib.ping = max(tick() - pingTE, prevPing)
+	end
 end)
 
 local function rs(times)
@@ -326,7 +342,8 @@ local function doCD(obj, duration)
 	cds[obj] = false
 end
 
-local lib = {
+lib = {
+	ping = prevPing,
 	fireproximityprompt = function(pp : ProximityPrompt, hitTimes, distanceCheck, cooldown, extraDistance)
 		if cds[pp] then return false, 2 end
 		if distanceCheck and (currentPos - getPosition(getHolder(pp))).Magnitude > pp.MaxActivationDistance + (extraDistance or 0.1) then return false, 1 end
