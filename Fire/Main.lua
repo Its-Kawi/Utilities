@@ -64,10 +64,17 @@ local function rs(times)
 	return dt
 end
 
+local fakepp = ins("ProximityPrompt")
+local ihb, ihe = fakepp.InputHoldBegin, fakepp.InputHoldEnd
+fakepp:Destroy()
+fakepp = nil
+
 local originalFPP = true
 local _fireproximityprompt = function(pp, repeatTimes)
 	repeatTimes = max(tonumber(repeatTimes) or 1, 0)
-	repeats[pp] = (repeats[pp] or 0) + repeatTimes
+	
+	local rep = (repeats[pp] or 0) + repeatTimes
+	repeats[pp] = rep
 
 	if cd[pp] then return end
 	cd[pp] = true
@@ -80,10 +87,10 @@ local _fireproximityprompt = function(pp, repeatTimes)
 	pp.HoldDuration = 0
 	pp.RequiresLineOfSight = false
 	
-	clock:Wait()
+	rs()
 
-	for i = 1, repeats[pp] do
-		pp:InputHoldBegin(); pp:InputHoldEnd()
+	for i = 1, rep do
+		ihb(pp); ihe(pp)
 	end
 
 	cd[pp] = nil
