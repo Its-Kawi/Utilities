@@ -4,6 +4,7 @@
 --
 
 -- Create objects
+local parent = nil;
 local objects = {
     ["Instance0"] = Instance.new("ModuleScript");
     ["Instance1"] = Instance.new("ModuleScript");
@@ -628,7 +629,7 @@ local getPosition; getPosition = function(obj)
 end
 
 local function paintRichText(text, color3)
-    return "<font color=\"#" .. color3:ToHex() .. "\">" .. text .. "</font>"
+    return "<font color=\"#" .. c3n(clamp(color3.R, 0, 1), clamp(color3.G, 0, 1), clamp(color3.B, 0, 1)):ToHex() .. "\">" .. text .. "</font>"
 end
 
 local function rotateRGB(col)
@@ -757,7 +758,7 @@ local function newObject(object, settings, class)
 
     v = setmetatable({ Object = object, Settings = settings, ESP = espObj, Line = tracerLine, Destroy = destroy, Connection = object.AncestryChanged:Connect(function()
         if not v:IsDescendantOf(workspace) then
-            v:Destroy()
+            object:Destroy()
         end
     end) }, objectBase)
 
