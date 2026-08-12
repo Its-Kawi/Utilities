@@ -757,8 +757,8 @@ local function newObject(object, settings, class)
     updateLine(tracerLine, false)
 
     v = setmetatable({ Object = object, Settings = settings, ESP = espObj, Line = tracerLine, Destroy = destroy, Connection = object.AncestryChanged:Connect(function()
-        if not v:IsDescendantOf(workspace) then
-            object:Destroy()
+        if not object:IsDescendantOf(workspace) then
+            v:Destroy()
         end
     end) }, objectBase)
 
