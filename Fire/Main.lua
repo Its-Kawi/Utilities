@@ -126,7 +126,7 @@ spawn(function()
 			while wait() do
 				if lib then
 					disconnected = disconnected or plr:GetNetworkPing() < 0
-					lib.ping = disconnected and -1 or max(tick() - pingTE - pingChangeTime, prevPing / 1.2)
+					lib.ping = disconnected and -1 or max(tick() - pingTE - pingChangeTime, prevPing / 1.35)
 					
 					if disconnected then break end
 				end
