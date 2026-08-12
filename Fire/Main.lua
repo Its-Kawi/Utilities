@@ -36,15 +36,16 @@ local function setupFPP()
 	fppobj.CanCollide = false
 	fppobj.Size = Vector3.new(0.1, 0.1, 0.1)
 	fppobj.Anchored = true
+	fppobj.CanQuery = false
 	fppobj.Name = "FireProximityPromptPart"
 	fppobj.Parent = cam == workspace.CurrentCamera and cam or workspace.Terrain or workspace
 end
 
 setupFPP()
-rns:Connect(function()
+clock:Connect(function()
 	cam = workspace.CurrentCamera or cam
 	currentPos = plr.Character and ((plr.Character.PrimaryPart and plr.Character):GetPivot().Position) or cam.CFrame.Position
-	
+
 	if not fppobj:IsDescendantOf(workspace) then
 		fppobj = ins("Part")
 		setupFPP()
@@ -72,7 +73,7 @@ fakepp = nil
 local originalFPP = true
 local _fireproximityprompt = function(pp, repeatTimes)
 	repeatTimes = max(tonumber(repeatTimes) or 1, 0)
-	
+
 	local rep = (repeats[pp] or 0) + repeatTimes
 	repeats[pp] = rep
 
@@ -81,28 +82,28 @@ local _fireproximityprompt = function(pp, repeatTimes)
 
 	local a, b, c, d, e = pp.MaxActivationDistance, pp.Enabled, pp.Parent, pp.HoldDuration, pp.RequiresLineOfSight
 
-	pp.Parent = fppobj
 	pp.MaxActivationDistance = 1 / 0
 	pp.Enabled = true
+	pp.Parent = fppobj
 	pp.HoldDuration = 0
 	pp.RequiresLineOfSight = false
-	
+
 	rs()
 
 	for i = 1, rep do
 		ihb(pp); ihe(pp)
 	end
 
-	cd[pp] = nil
-	repeats[pp] = nil
-
 	if pp.Parent == fppobj then
-		pp.Parent = c
 		pp.MaxActivationDistance = a
 		pp.Enabled = b
+		pp.Parent = c
 		pp.HoldDuration = d
 		pp.RequiresLineOfSight = e
 	end
+
+	repeats[pp] = nil
+	cd[pp] = nil
 end
 
 local function touchYield(dynamicPart, staticPart)
@@ -193,38 +194,41 @@ local firetouchinterest = function(...)
 end
 
 local v3 = vector.create
+
+local getHolder
 local getPosition; getPosition = function(obj)
 	if not obj then return v3(0, 0, 0) end
-	if obj:IsA("Folder") then
+
+	if obj:IsA("BasePart") or obj:IsA("Model") then
+		return obj:GetPivot(obj).Position
+	elseif obj:IsA("Folder") then
 		local pos = v3(0, 0, 0)
 		local total = 0
 
 		for _, v in obj:GetChildren() do
-			if v:IsA("Model") or v:IsA("BasePart") then
+			if v:IsA("Model") or v:IsA("BasePart") or obj:IsA("Attachment") then
 				pos += getPosition(v)
 				total += 1
 			end
 		end
 
 		return pos / total
-	elseif obj:IsA("Camera") then
-		return obj.CFrame.Position
 	elseif obj:IsA("Attachment") then
 		return obj.WorldPosition
+	else
+		return getPosition(getHolder(obj))
 	end
-
-	return obj:GetPivot(obj).Position
 end
 
 local holders = setmetatable({ }, { __mode = "kv" })
 local holderCons = setmetatable({ }, { __mode = "kv" })
 
-local getHolder; getHolder = function(obj, isFirst)
+getHolder = function(obj, isFirst)
 	local h = holders[obj]
 	if h then
 		return h
 	end
-	
+
 	if not obj or obj:IsA("Model") or obj:IsA("Folder") or obj:IsA("BasePart") or obj:IsA("Attachment") then return obj end
 
 	h = getHolder(obj.Parent)
@@ -235,7 +239,7 @@ local getHolder; getHolder = function(obj, isFirst)
 
 		holders[obj] = h
 	end
-	
+
 	return h
 end
 
@@ -282,22 +286,22 @@ spawn(pcall, function()
 		part.Anchored = true
 		part.CanCollide = false
 		part.Transparency = 1
-		
+
 		local pp = ins("ProximityPrompt", part)
 		pp.MaxActivationDistance = 0
-		
+
 		pp.Triggered:Once(function()
 			fppn = true
 		end)
 
 		spawn(fpp, pp)
 		rs(2)
-		
+
 		if fppn then
 			originalFPP = false
 			_fireproximityprompt = fpp
 		end
-		
+
 		pp:Destroy()
 		part:Destroy()
 	end
@@ -316,7 +320,7 @@ end
 local cds = { }
 local function doCD(obj, duration)
 	if duration <= 0 then return end
-	
+
 	cds[obj] = true
 	wait(duration)
 	cds[obj] = false
@@ -336,7 +340,7 @@ local lib = {
 				spawn(_fireproximityprompt, pp)
 			end
 		end
-		
+
 		return true
 	end,
 	firetouchinterest = firetouchinterest,
