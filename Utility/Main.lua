@@ -1,3 +1,4 @@
+local GITHUB = "https://raw.githubusercontent.com/Its-Kawi/"
 local utils = {
 	Data = "Util",
 	ESPLib = "Util",
@@ -28,13 +29,12 @@ local utilGlobalKeys = {
 }
 
 local ext = ".lua"
-local user = "https://raw.githubusercontent.com/Its-Kawi/"
 local subUrls = {
-	Util = user .. "Utilities/refs/heads/main/"
+	Util = GITHUB .. "Utilities/refs/heads/main/"
 }
 
 local urls = {
-	UI = user .. "Fire-Library/refs/heads/main/QuickLoader" .. ext,
+	UI = GITHUB .. "Fire-Library/refs/heads/main/QuickLoader" .. ext,
 	Desync = subUrls.Util .. "Physics/Desync" .. ext
 }
 
@@ -59,6 +59,7 @@ local coreFolder = "QUtil/"
 local utilFile = coreFolder .. "Utility" .. ext
 local utilVerCheckFile = coreFolder .. "VCheck.txt"
 local utilsFolder = coreFolder .. "Utilities/"
+local cacheFolder = coreFolder .. "Cache/"
 
 local wf, rf, mf, IF, df, DF, re = writefile or write_file, readfile or read_file, makefolder or make_folder, isfile or is_file, deletefolder or delfolder or removefolder or delete_folder or del_folder or remove_folder, deletefile or delfile or removefile or delete_file or del_fire or remove_file, request or http_request
 local loadstring, tonumber, game, error, warn, freeze, spawn, pcall, tick, tostring = loadstring or load, tonumber, game, error, warn, table.freeze, task and task.spawn or spawn, pcall, tick, tostring
@@ -74,9 +75,10 @@ local function httpGet(url, headers)
 	end
 end
 
+local expiryTime = 60 * 60 * 4 -- 4 hours
 if wf and rf and mf and df and IF and DF then
 	local isf = IF(utilVerCheckFile)
-	if isf and tick() - tonumber(rf(utilVerCheckFile)) > 10800 or not isf then
+	if isf and tick() - tonumber(rf(utilVerCheckFile)) > expiryTime then
 		local self, s = httpGet(subUrls.Util .. "Utility/Main" .. ext)
 		if s then
 			local loadTest = loadstring(self)
@@ -87,6 +89,7 @@ if wf and rf and mf and df and IF and DF then
 
 				pcall(mf, coreFolder:sub(1, -2))
 				pcall(mf, utilsFolder:sub(1, -2))
+				pcall(mf, cacheFolder:sub(1, -2))
 				pcall(wf, utilFile, utilityPrefix .. self)
 				pcall(wf, utilVerCheckFile, tostring(tick()))
 
@@ -100,6 +103,7 @@ if wf and rf and mf and df and IF and DF then
 		if s and loadstring(self) then
 			pcall(mf, coreFolder:sub(1, -2))
 			pcall(mf, utilsFolder:sub(1, -2))
+			pcall(mf, cacheFolder:sub(1, -2))
 			pcall(wf, utilFile, utilityPrefix .. self)
 			pcall(wf, utilVerCheckFile, tostring(tick()))
 		end
@@ -107,6 +111,7 @@ if wf and rf and mf and df and IF and DF then
 
 	pcall(mf, coreFolder:sub(1, -2))
 	pcall(mf, utilsFolder:sub(1, -2))
+	pcall(mf, cacheFolder:sub(1, -2))
 end
 
 if global[globalKey] then
@@ -145,8 +150,14 @@ local function hash(str)
 end
 
 local downloadModule
-local function try(moduleName, doUpdate)
-	local filePath = utilsFolder .. hash(moduleName) .. ext
+local function getUrl(moduleName, moduleType)
+	return moduleType == "Download" and moduleName or moduleType == "Url" and urls[moduleName] or moduleType == "NF" and (nfPaths[moduleName]:sub(1, 9) == "Libraries" and GITHUB .. "Null-Fire/refs/heads/main/Core/" or GITHUB .. "Null-Fire/refs/heads/main/Core/Loaders/") .. nfPaths[moduleName] .. (nfPaths[moduleName]:sub(1, 9) == "Libraries" and "/Main" or "") .. ext or subUrls[moduleType] .. moduleName .. "/Main" .. ext
+end
+
+local function try(moduleName, moduleType, doUpdate)
+	local url = getUrl(moduleName, moduleType)
+	local filePath = utilsFolder .. hash(url) .. ext
+	
 	if IF and IF(filePath) then
 		return loadstring(rf(filePath))
 	end
@@ -164,20 +175,50 @@ local function try(moduleName, doUpdate)
 	end
 end
 
-function downloadModule(name, forceDownload)
-	local moduleName, moduleType = getModuleInfo(name)
+local function updCheck(hash)
+	local extFile = cacheFolder .. hash
+	if IF(extFile) then
+		local n = tonumber(rf(extFile))
+		if n and n > expiryTime then
+			df(extFile)
 
-	if not forceDownload then local ret = try(moduleName, true) if ret then return ret end end
-	local moduleContents, s = httpGet(moduleType == "Download" and moduleName or moduleType == "Url" and urls[moduleName] or moduleType == "NF" and (nfPaths[moduleName]:sub(1, 9) == "Libraries" and user .. "Null-Fire/refs/heads/main/Core/" or user .. "Null-Fire/refs/heads/main/Core/Loaders/") .. nfPaths[moduleName] .. (nfPaths[moduleName]:sub(1, 9) == "Libraries" and "/Main" or "") .. ext or subUrls[moduleType] .. moduleName .. "/Main" .. ext)
+			local filePath = utilsFolder .. hash .. ext
+			if IF(filePath) then
+				df(filePath)
+			end
+		end
+	end
+end
+
+local moduleCache = { }
+function downloadModule(name, forceDownload)
+	local cached = moduleCache[name]
+	if cached then return cached end
+	
+	local moduleName, moduleType = getModuleInfo(name)
+	local url = getUrl(moduleName, moduleType)
+	
+	local hash = hash(url)
+	pcall(updCheck, hash)
+	
+	if not forceDownload then local ret = try(moduleName, moduleType, true) if ret then moduleCache[name] = ret return ret end end
+	
+	local moduleContents, s = httpGet(url)
 	if not s or moduleContents:gsub("[\n\r\f\t\0 ]", "") == "" or #moduleContents < #utilityPrefix + 5 then
-		return downloadModule(name, true)
+		local downloaded = downloadModule(name, true)
+		moduleCache[name] = downloaded
+		
+		return downloaded
 	end
 
-	if not forceDownload then local ret = try(moduleName, false) if ret then return ret end end
+	if not forceDownload then local ret = try(moduleName, moduleType, false) if ret then moduleCache[name] = ret return ret end end
 	local loadTest = loadstring(moduleContents)
 
 	if loadTest then
-		pcall(wf, utilsFolder .. hash(moduleName) .. ext, "-- " .. moduleName .. "\n" .. moduleContents)
+		pcall(wf, utilsFolder .. hash .. ext, "-- " .. moduleName .. "\n" .. moduleContents)
+		pcall(wf, cacheFolder .. hash, tostring(tick()))
+		
+		moduleCache[name] = loadTest
 		return loadTest
 	else
 		error("Module failed to load: " .. moduleContents, 0)
@@ -214,8 +255,7 @@ end)
 
 local returnCache = { }
 local util = setmetatable({
-	Load = function(self, name) if not self.Modules then error("Call via ':' next time!", 0) end return bruteforceLoadModule(name)() end,
-	LoadModule = function(self, ...) return self:Load(...) end,
+	Download = function(self, name) if not self.Modules then error("Call via ':' next time!", 0) end return bruteforceLoadModule(name) end,
 	Modules = modules,
 	Utililites = modules,
 	Utils = modules,
@@ -235,6 +275,8 @@ local util = setmetatable({
 }, freeze({
 	__index = function(_, name)
 		local safeName = name:gsub("[\n\r\f\t\s\0 ]", ""):lower()
+		safeName = safeName:sub(1, 1):upper() .. safeName:sub(2)
+		
 		local c = returnCache[safeName]
 		if c then return c end
 
