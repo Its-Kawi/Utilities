@@ -393,7 +393,7 @@ local function doCD(obj, duration)
 end
 
 lib = {
-	ping = prevPing,
+	ping = plr:GetNetworkPing(),
 	fireproximityprompt = function(pp : ProximityPrompt, hitTimes, distanceCheck, cooldown, extraDistance)
 		if cds[pp] then return false, 2 end
 		if distanceCheck and (currentPos - getPosition(getHolder(pp))).Magnitude > pp.MaxActivationDistance + (extraDistance or 0.1) then return false, 1 end
