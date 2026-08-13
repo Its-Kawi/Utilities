@@ -94,39 +94,13 @@ spawn(function()
 			end
 		end
 	else
-		local pingBuff = { }
-		local function getAverage(tbl)
-			local summ = 0
-			local idxs = 0
-			
-			for _, v in tbl do
-				summ += v
-				idxs += 1
-			end
-			
-			local avg = summ / idxs
-			if avg ~= avg then
-				avg = 0
-			end
-			
-			return avg
-		end
-		
-		local remove, insert = table.remove, table.insert
-		local function append(table, value, size)
-			while #table >= size do
-				remove(table, #table)
-			end
-
-			insert(table, 1, value)
-			return getAverage(table)
-		end
-		
 		spawn(function()
 			while wait() do
 				if lib then
-					disconnected = disconnected or plr:GetNetworkPing() < 0
-					lib.ping = disconnected and -1 or max(tick() - pingTE - pingChangeTime, prevPing / 1.35)
+					local np = plr:GetNetworkPing()
+					
+					disconnected = disconnected or np < 0
+					lib.ping = disconnected and -1 or max(tick() - pingTE - pingChangeTime, np)
 					
 					if disconnected then break end
 				end
@@ -140,8 +114,6 @@ spawn(function()
 			local ct = tick()
 			
 			pingChangeTime = (ct - pingTE) * 2
-			
-			prevPing = append(pingBuff, ct - start, 3) 
 			pingTE = ct
 			
 			if disconnected then break end
