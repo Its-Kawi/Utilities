@@ -403,7 +403,7 @@ topb.ScreenInsets = Enum.ScreenInsets.TopbarSafeInsets
 
 local dh = not dnew and inew("ScreenGui", topb.Parent)
 if dh then
-    dh.DisplayOrder = 2147483647
+    dh.DisplayOrder = 2147483646
     dh.ResetOnSpawn = false
     -- dh.IgnoreGuiInset = true
     dh.ClipToDeviceSafeArea = false
@@ -473,7 +473,7 @@ local base = {
     Performant = false,
     ShowDistance = true,
     Event = ev,
-    FPS = 40, -- good balance between laggy and smooth
+    FPS = 30, -- good balance between laggy and smooth
     DistanceGradient = { 100, c3n(1, 0.4, 0.4), c3n(0.4, 1, 0.4) },
     ClassSettings = setmetatable({ }, {
         __index = function(self, idx)
