@@ -273,14 +273,14 @@ local util = setmetatable({
 		end
 	end
 }, freeze({
-	__index = function(_, name)
+	__index = function(self, name)
 		local safeName = name:gsub("[\n\r\f\t\s\0 ]", ""):lower()
 		safeName = safeName:sub(1, 1):upper() .. safeName:sub(2)
 		
 		local c = returnCache[safeName]
 		if c then return c end
 
-		local retF = function(self) return self:Load(name) end
+		local retF = self:Download(name)
 		returnCache[safeName] = retF
 
 		return retF
