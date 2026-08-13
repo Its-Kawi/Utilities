@@ -274,7 +274,7 @@ local util = setmetatable({
 	end
 }, freeze({
 	__index = function(self, name)
-		local safeName = name:gsub("[\n\r\f\t\s\0 ]", ""):lower()
+		local safeName = name:gsub("[\n\r\f\t\0 ]", ""):lower()
 		safeName = safeName:sub(1, 1):upper() .. safeName:sub(2)
 		
 		local c = returnCache[safeName]
