@@ -4,7 +4,6 @@
 --
 
 -- Create objects
-local parent = nil;
 local objects = {
     ["Instance0"] = Instance.new("ModuleScript");
     ["Instance1"] = Instance.new("ModuleScript");
@@ -403,7 +402,7 @@ topb.ScreenInsets = Enum.ScreenInsets.TopbarSafeInsets
 
 local dh = not dnew and inew("ScreenGui", topb.Parent)
 if dh then
-    dh.DisplayOrder = 2147483646
+    dh.DisplayOrder = 2147483647
     dh.ResetOnSpawn = false
     -- dh.IgnoreGuiInset = true
     dh.ClipToDeviceSafeArea = false
@@ -591,11 +590,16 @@ local function destroy(self)
 
     self.ESP:Destroy()
     self.Line:Destroy()
-    self.Connection:Disconnect()
+    
+    for i, v in self.Connections do
+        if v.Connected then
+            v:Disconnect()
+        end
+    end
 
     rawset(self, "Destroyed", true)
     rawset(self, "ESP", nil)
-    rawset(self, "Connection", nil)
+    rawset(self, "Connections", nil)
     rawset(self, "Line", nil)
 end
 
@@ -756,11 +760,15 @@ local function newObject(object, settings, class)
     local tracerLine = newLine()
     updateLine(tracerLine, false)
 
-    v = setmetatable({ Object = object, Settings = settings, ESP = espObj, Line = tracerLine, Destroy = destroy, Connection = object.AncestryChanged:Connect(function()
+    v = setmetatable({ Object = object, Settings = settings, ESP = espObj, Line = tracerLine, Destroy = destroy, Connections = { object.AncestryChanged:Connect(function()
         if not object:IsDescendantOf(workspace) then
             v:Destroy()
         end
-    end) }, objectBase)
+    end), object:GetPropertyChangedSignal("Parent"):Connect(function()
+        if not object:IsDescendantOf(workspace) then
+            v:Destroy()
+        end
+    end) }}, objectBase)
 
     rawset(settings, "Self", v)
 
@@ -768,7 +776,12 @@ local function newObject(object, settings, class)
     ESPs[settings.Class][object] = v
     espCache[object] = v
 
-    refresh(v)
+    if object:IsDescendantOf(workspace) then
+        refresh(v)
+    else
+        v:Destroy()
+    end
+
     return v
 end
 
