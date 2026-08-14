@@ -157,7 +157,7 @@ end
 local function try(moduleName, moduleType, doUpdate)
 	local url = getUrl(moduleName, moduleType)
 	local filePath = utilsFolder .. hash(url) .. ext
-	
+
 	if IF and IF(filePath) then
 		return loadstring(rf(filePath))
 	end
@@ -194,20 +194,20 @@ local moduleCache = { }
 function downloadModule(name, forceDownload)
 	local cached = moduleCache[name]
 	if cached then return cached end
-	
+
 	local moduleName, moduleType = getModuleInfo(name)
 	local url = getUrl(moduleName, moduleType)
-	
+
 	local hash = hash(url)
 	pcall(updCheck, hash)
-	
+
 	if not forceDownload then local ret = try(moduleName, moduleType, true) if ret then moduleCache[name] = ret return ret end end
-	
+
 	local moduleContents, s = httpGet(url)
 	if not s or moduleContents:gsub("[\n\r\f\t\0 ]", "") == "" or #moduleContents < #utilityPrefix + 5 then
 		local downloaded = downloadModule(name, true)
 		moduleCache[name] = downloaded
-		
+
 		return downloaded
 	end
 
@@ -217,7 +217,7 @@ function downloadModule(name, forceDownload)
 	if loadTest then
 		pcall(wf, utilsFolder .. hash .. ext, "-- " .. moduleName .. "\n" .. moduleContents)
 		pcall(wf, cacheFolder .. hash, tostring(tick()))
-		
+
 		moduleCache[name] = loadTest
 		return loadTest
 	else
@@ -276,11 +276,11 @@ local util = setmetatable({
 	__index = function(self, name)
 		local safeName = name:gsub("[\n\r\f\t\0 ]", ""):lower()
 		safeName = safeName:sub(1, 1):upper() .. safeName:sub(2)
-		
+
 		local c = returnCache[safeName]
 		if c then return c end
 
-		local retF = self:Download(name)
+		local retF = function(self, ...) return self:Download(name)(...) end
 		returnCache[safeName] = retF
 
 		return retF
