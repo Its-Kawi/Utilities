@@ -434,7 +434,7 @@ local updateLine = dnew and function(line, visible, to, color)
     line.Color = color
     line.Thickness = 1
 end or function(line, visible, to, color)
-    line.Visible = false
+    line.Visible = visible
     if not visible then return end
 
     local direction = (to - fromPoint)
@@ -443,7 +443,6 @@ end or function(line, visible, to, color)
     line.Rotation = deg(atan2(direction.Y, direction.X))
     line.Size =  u2(0, direction.Magnitude, 0, 1)
     line.BackgroundColor3 = color
-    line.Visible = true
 end
 
 local refresh
@@ -473,7 +472,7 @@ local base = {
     Performant = false,
     ShowDistance = true,
     Event = ev,
-    FPS = 30, -- good balance between laggy and smooth
+    -- FPS = 30, -- good balance between laggy and smooth | but I decided to abandon it
     DistanceGradient = { 100, c3n(1, 0.4, 0.4), c3n(0.4, 1, 0.4) },
     ClassSettings = setmetatable({ }, {
         __index = function(self, idx)
@@ -549,11 +548,17 @@ game:GetService("RunService").Stepped:Connect(function()
 end)
 
 local espCache = { }
+
+local lastDelta = 0
+game:GetService("RunService").RenderStepped:Connect(function(dt)
+    lastDelta = dt
+end)
+
 task.spawn(function()
     local wait = task.wait
     local spawn = task.spawn
     
-    while wait(1 / base.FPS) do
+    while wait(lastDelta * 1.5) do
         for _, v in espCache do
             spawn(refresh, v)
         end
@@ -622,7 +627,10 @@ local function rotateRGB(col)
     return c3n(col.G, col.R, col.B)
 end
 
-refresh = function(self)
+local null = ""
+local newline = "\n"
+
+refresh = function(self, pos, vec)
     self = self.Self or self
 
     if self.Destroyed then return end
@@ -634,15 +642,16 @@ refresh = function(self)
 
     if not obj then return destroy(self) end
 
-    local highlight = esp.Highlight
-    local pos = getPosition(obj)
-    local vec = getVector2(pos)
+    pos = pos or getPosition(obj)
+    vec = vec or getVector2(pos)
 
     local class = settings.Class
     local classSettings = base.ClassSettings[class]
     local visible = vec and settings.Visible and classSettings.Visible
 
     esp.Enabled = visible
+    
+    local highlight = esp.Highlight
     highlight.Enabled = visible and settings.Highlight
 
     if not visible then
@@ -656,8 +665,10 @@ refresh = function(self)
     local color = rgb
     if not color then
         color = settings.Color or classSettings.Color or c3n(1, 1, 1)
-        if settings.RotationLevel then
-            color = color:Lerp(rotateRGB(color), settings.RotationLevel)
+        
+        local rl = settings.RotationLevel
+        if rl then
+            color = color:Lerp(rotateRGB(color), rl)
         end
     end
 
@@ -672,20 +683,20 @@ refresh = function(self)
     text.Text = settings.Text
     text.TextColor3 = color
 
-    local afterText = ""
+    local afterText = null
     
     if settings.ShowDistance or classSettings.ShowDistance and base.ShowDistance and target then
         local dist = (myPos - pos).Magnitude
             
         local gradient = settings.DistanceGradient or classSettings.DistanceGradient or base.DistanceGradient
-        afterText = paintRichText("\n[ " .. (dist >= 10 and round(dist) or ("%.1f"):format(dist)) .. " ]", gradient[2]:Lerp(gradient[3], clamp(dist / gradient[1], 0, 1)))
+        afterText = newline .. paintRichText("[ " .. (dist >= 10 and round(dist) or ("%.1f"):format(dist)) .. " ]", gradient[2]:Lerp(gradient[3], clamp(dist / gradient[1], 0, 1)))
     end
 
     topText.Text = settings.TopText .. afterText
     topText.TextColor3 = color
 
-    local tracerEnabled = settings.Tracer or classSettings.Tracers and base.Tracers
-    if opened or not tracerEnabled then
+    local tracerEnabled = not opened and (settings.Tracer or classSettings.Tracers and base.Tracers)
+    if opened or not (settings.Tracer or classSettings.Tracers and base.Tracers) then
         return updateLine(line, false)
     end
 
@@ -710,19 +721,19 @@ local ESPBaseSettings = {
 ESPBaseSettings = { __index = ESPBaseSettings }
 
 local objectBase = { __index = function(self, idx)
-    return rawget(rawget(self, "Settings") or { }, idx) or rawget(self, idx)
+    return self.Settings[idx] or rawget(self, idx)
 end, __newindex = function(self, idx, val)
-    rawset(rawget(self, "Settings") or { }, idx, val)
+    self.Settings[idx] = val
     refresh(self)
 end }
 
 local function newObject(object, settings, class)
     settings = setmetatable(settings or { }, ESPBaseSettings)
     if class then
-        rawset(settings, "Class", class)
+        settings.Class = class
     end
 
-    rawset(settings, "Settings", settings)
+    settings.Settings = settings
 
     local v = espCache[object]
     if v then
@@ -750,7 +761,7 @@ local function newObject(object, settings, class)
         end
     end) }}, objectBase)
 
-    rawset(settings, "Self", v)
+    settings.Self = v
 
     ESPs[settings.Class] = ESPs[settings.Class] or { }
     ESPs[settings.Class][object] = v
@@ -775,4 +786,4 @@ end;
 -- YOUR CODE DOWN HERE --
 
 local obj = objects["Instance0"];
-return require(obj)
+return require(obj);
