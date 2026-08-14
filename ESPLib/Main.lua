@@ -4,6 +4,7 @@
 --
 
 -- Create objects
+local parent = nil;
 local objects = {
     ["Instance0"] = Instance.new("ModuleScript");
     ["Instance1"] = Instance.new("ModuleScript");
@@ -402,7 +403,7 @@ topb.ScreenInsets = Enum.ScreenInsets.TopbarSafeInsets
 
 local dh = not dnew and inew("ScreenGui", topb.Parent)
 if dh then
-    dh.DisplayOrder = 2147483647
+    dh.DisplayOrder = 2147483646
     dh.ResetOnSpawn = false
     -- dh.IgnoreGuiInset = true
     dh.ClipToDeviceSafeArea = false
@@ -512,7 +513,6 @@ local cam = workspace.CurrentCamera
 local f = 50
 local myPos = cam and cam.CFrame or CFrame.new()
 local target
-local tracers = false
 
 game:GetService("RunService").Stepped:Connect(function()
     local currentTick = tick()
@@ -546,25 +546,6 @@ game:GetService("RunService").Stepped:Connect(function()
     end
 
     myPos = plr and plr.Character and plr.Character:GetPivot().Position or cam and cam.CFrame.Position or myPos
-    tracers = false
-    
-    for _, v in ESPs do
-        if v.Tracers then
-            tracers = true
-            break
-        end
-        
-        for _, v2 in v do
-            if v.Tracer then
-                tracers = true
-                break
-            end
-        end
-        
-        if tracers then
-            break
-        end
-    end
 end)
 
 local espCache = { }
@@ -572,7 +553,7 @@ task.spawn(function()
     local wait = task.wait
     local spawn = task.spawn
     
-    while wait((tracers and 1 or 0.5) / base.FPS) do
+    while wait(1 / base.FPS) do
         for _, v in espCache do
             spawn(refresh, v)
         end
@@ -594,6 +575,7 @@ local function destroy(self)
     for i, v in self.Connections do
         if v.Connected then
             v:Disconnect()
+            self.Connections[i] = nil
         end
     end
 
@@ -650,9 +632,7 @@ refresh = function(self)
     local obj = self.Object
     local line = self.Line
 
-    if not obj then
-        return destroy(self)
-    end
+    if not obj then return destroy(self) end
 
     local highlight = esp.Highlight
     local pos = getPosition(obj)
