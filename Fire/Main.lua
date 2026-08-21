@@ -208,7 +208,7 @@ local ofiretouchinterest = function(a, b, c)
 	if cd[a] or cd[b] then return end
 
 	if typeof(c) == "boolean" then
-		c = c and 1 or 0
+		c = c and 0 or1
 	elseif c ~= 1 and c ~= 0 then
 		error("number must be 1 or 0", 0)
 	end
@@ -221,7 +221,7 @@ local ofiretouchinterest = function(a, b, c)
 	cd[a] = true
 	cd[b] = true
 
-	if c == 0 then
+	if c == 1 then
 		local ct = b.CanTouch
 
 		b.CanTouch = false
@@ -379,8 +379,8 @@ local touchpart = function(part, useOld)
 		error("Unable to touch the Part!", 0)
 	end
 
-	(useOld and ofiretouchinterest or firetouchinterest)(part, part2, 1);
-	(useOld and ofiretouchinterest or firetouchinterest)(part, part2, 0)
+	(useOld and ofiretouchinterest or firetouchinterest)(part, part2, 0);
+	(useOld and ofiretouchinterest or firetouchinterest)(part, part2, 1)
 end
 
 local cds = { }
