@@ -208,7 +208,7 @@ local ofiretouchinterest = function(a, b, c)
 	if cd[a] or cd[b] then return end
 
 	if typeof(c) == "boolean" then
-		c = c and 0 or1
+		c = c and 0 or 1
 	elseif c ~= 1 and c ~= 0 then
 		error("number must be 1 or 0", 0)
 	end
