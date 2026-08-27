@@ -13,25 +13,27 @@ local BASE = 128 - BASE_DECREASE
 local BIG = 196 - BIG_DECREASE
 
 local EFFECTS = { -- Order, ID, Name, Is Pixelated, Size, Put Behind Base, Default Color | nil
+	-- There gonna be +1 order skip for each new category
+
 	GlitchyGlow = { 1, "109237646553064", "Glitchy Glow", true, BIG, true, nil },
 	Glitch = { 2, "137064778284738", "Glitch", true, BASE, false, nil },
 	GlitchyOutline = { 3, "100747681027577", "Inside Glitchy Outline", true, BASE, false, nil },
 	SmallGlitch = { 4, "115837731276292", "Small Glitch", true, BASE, false, nil },
 
-	Glow = { 5, "111303583666486", "Glow", false, BIG, true, nil },
-	CenteredGlow = { 6, "117156608404145", "Centered Glow", false, BASE, false, nil },
-	InsideGlow = { 7, "82284124866450", "Inside Glow", false, BASE, false, nil },
+	Glow = { 6, "111303583666486", "Glow", false, BIG, true, nil },
+	CenteredGlow = { 7, "117156608404145", "Centered Glow", false, BASE, false, nil },
+	InsideGlow = { 8, "82284124866450", "Inside Glow", false, BASE, false, nil },
 
-	Outline = { 8, "137779358107707", "Outline", false, BIG, true, Color3.new(0, 0, 0) },
-	CenteredOutline = { 9, "107008327010804", "Centered Outline", false, BASE, false, nil },
-	InsideOutline = { 10, "89472362438218", "Inside Outline", false, BASE, false, Color3.new(0, 0, 0) },
+	Outline = { 10, "137779358107707", "Outline", false, BIG, true, Color3.new(0, 0, 0) },
+	CenteredOutline = { 11, "107008327010804", "Centered Outline", false, BASE, false, nil },
+	InsideOutline = { 12, "89472362438218", "Inside Outline", false, BASE, false, Color3.new(0, 0, 0) },
 
-	GradientTop = { 11, "125702466733350", "Top Gradient", false, BASE, false, nil },
-	GradientBottom = { 12, "78860595216966", "Bottom Gradient", false, BASE, false, nil },
+	GradientTop = { 14, "125702466733350", "Top Gradient", false, BASE, false, nil },
+	GradientBottom = { 15, "78860595216966", "Bottom Gradient", false, BASE, false, nil },
 
-	Normal3D = { 13, "105926903515772", "3D", false, BASE, false, Color3.new(1, 1, 1) },
-	Blurred3D = { 14, "110410299371403", "Blurred 3D", false, BASE, false, Color3.new(1, 1, 1) },
-	Metallic3D = { 15, "136384212097552", "Metallic 3D", false, BASE, false, Color3.new(1, 1, 1) }
+	Normal3D = { 17, "105926903515772", "3D", false, BASE, false, Color3.new(1, 1, 1) },
+	Blurred3D = { 18, "110410299371403", "Blurred 3D", false, BASE, false, Color3.new(1, 1, 1) },
+	Metallic3D = { 19, "136384212097552", "Metallic 3D", false, BASE, false, Color3.new(1, 1, 1) }
 }
 
 BASE += BASE_DECREASE
@@ -205,7 +207,7 @@ for i, v in EFFECTS do
 
 		effect.Effect.Parent = self.Frame[effect.PutBehind and "Behind" or "Infront"]
 		effect.Cursor = self
-		
+
 		insert(self.Effects, effect)
 
 		return self
@@ -306,7 +308,8 @@ local cursorLib = {
 			Frame = newCursor,
 			Color = c3n(1, 1, 1),
 
-			Image = ""
+			Image = "",
+			Blurry = false
 		}
 
 		cursorProxyData[proxy] = cursorData
@@ -412,9 +415,12 @@ task.spawn(function() -- HANDLE CURSORS
 			end
 
 			cursorImage.Visible = true
+			cursorImage.ResampleMode = currentCursor.Blurry and rmd or rmp
+
 			return true
 		else
 			cursorImage.Image = "rbxassetid://" .. base
+			cursorImage.ResampleMode = rmd
 
 			for i, v in frame:GetChildren() do
 				v.Visible = true
