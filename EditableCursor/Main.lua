@@ -442,12 +442,17 @@ task.spawn(function() -- HANDLE CURSORS
 
 	local prevEnabled = uis.MouseIconEnabled
 	local targetEnabled = prevEnabled
+	local prevState = prevEnabled
 	local ignore = false
 
 	uis:GetPropertyChangedSignal("MouseIconEnabled"):Connect(function()
 		local state = uis.MouseIconEnabled
-		if state ~= targetEnabled then
-			prevEnabled = state
+		if state ~= prevState then
+			prevState = state
+			
+			if state ~= prevEnabled then
+				prevEnabled = state
+			end
 		end
 	end)
 
@@ -457,11 +462,11 @@ task.spawn(function() -- HANDLE CURSORS
 		targetEnabled = not success and prevEnabled or success and false
 
 		if not targetEnabled then
-			uis.MouseIconEnabled = targetEnabled
 			set = false
+			uis.MouseIconEnabled = targetEnabled
 		elseif not set then
 			set = true
-			uis.MouseIconEnabled = uis.MouseBehavior ~= mblc and targetEnabled or false
+			uis.MouseIconEnabled = targetEnabled
 		end
 	end
 
