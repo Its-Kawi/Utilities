@@ -7,8 +7,11 @@ local utils = {
 	Typer = "Util",
 	Other = "Util",
 	Fire = "Util",
+	EditableCursor = "Util",
+	
 	Desync = "Url",
 	UI = "Url",
+	
 	NullFireWindow = "NF",
 	FunkyFridayAutoPlay = "NF",
 	PressureTubePuzzle = "NF"
@@ -19,12 +22,15 @@ local utilGlobalKeys = {
 	ESPLib = "FESPLib",
 	Event = "EventLib1",
 	Physics = "PhyLib",
-	Desync = "DesyncLib",
-	UI = "FireLibrary",
-	NullFireWindow = "NFWINDOW",
-	FunkyFridayAutoPlay = "FFAutoplayLib",
 	Other = "NFOtherLib",
 	Fire = "FIRELIB_omg_UI_lib_name_drop",
+	EditableCursor = "EditableCursorLib",
+	
+	Desync = "DesyncLib",
+	UI = "FireLibrary",
+	
+	NullFireWindow = "NFWINDOW",
+	FunkyFridayAutoPlay = "FFAutoplayLib",
 	PressureTubePuzzle = "PressureTubes"
 }
 
@@ -45,8 +51,11 @@ local nfPaths = {
 }
 
 local shortcuts = {
-	ESP = "ESPLib"
+	ESP = "ESPLib",
+	EditableCursor = "Cursor"
 }
+
+local preload = { "Event", "Physics", "Desync", "Typer", "Other", "Fire" }
 
 local global = getgenv and getgenv() or _G
 local globalKey = "QKUtil"
@@ -246,10 +255,16 @@ end
 freeze(modules)
 
 local defer = task.defer
+local find = table.find
+
 spawn(function()
 	for i, module in modules do
 		pcall(downloadModule, module, true)
-		pcall(bruteforceLoadModule, module)
+		local s, f = pcall(bruteforceLoadModule, module)
+		
+		if s and find(preload, module) then
+			pcall(f)
+		end
 	end
 end)
 
