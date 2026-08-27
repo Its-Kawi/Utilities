@@ -106,37 +106,22 @@ task.spawn(function()
 	end
 end)
 
-local can = pcall(function() plr.DevCameraOcclusionMode = plr.DevCameraOcclusionMode end)
-local original = can and plr.DevCameraOcclusionMode
-local invis = Enum.DevCameraOcclusionMode.Invisicam
-
 rs.RenderStepped:Connect(function()
-	plrSpoofer.Enabled = library.Enabled
-	if library.Enabled and library.Delay > 0 then
-		local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
-		if hrp then
-			if can then
-				plr.DevCameraOcclusionMode = invis
-			end
-			
-			resetState = false
-			fakeHrp.Size = hrp.Size
-			makeRecord(hrp)
-		else
-			if can then
-				plr.DevCameraOcclusionMode = original
-			end
-			
-			if library.ClearHistoryOnDeath then
+	if library.Enabled then
+		plrSpoofer.Enabled = true
+		
+		if library.Delay > 0 then	
+			local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+			if hrp then
+				resetState = false
+				fakeHrp.Size = hrp.Size
+				makeRecord(hrp)
+			elseif library.ClearHistoryOnDeath then
 				clear(history)
 			end
+		else
+			clear(history)
 		end
-	else
-		if can then
-			plr.DevCameraOcclusionMode = original
-		end
-		
-		clear(history)
 	end
 end)
 
