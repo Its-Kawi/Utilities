@@ -205,6 +205,8 @@ for i, v in EFFECTS do
 
 		effect.Effect.Parent = self.Frame[effect.PutBehind and "Behind" or "Infront"]
 		effect.Cursor = self
+		
+		insert(self.Effects, effect)
 
 		return self
 	end
