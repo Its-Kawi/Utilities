@@ -1,9 +1,8 @@
 local libN = "PhyLib"
 local g = (getfenv().getgenv or function() return _G end)()
 
-g[libN] = { }
 if g[libN] then
-	-- return g[libN]
+	return g[libN]
 end
 
 local pack = table.pack
@@ -39,7 +38,7 @@ local GITHUB = "https://raw.githubusercontent.com/Its-Kawi/"
 local util = (getfenv().getgenv or function() return _G end)().QKUtil or (function() local url = GITHUB .. "Utilities/refs/heads/main/Utility/Main.lua" local rf, IF = getfenv().readfile or getfenv().read_file, getfenv().isfile or getfenv().is_file return loadstring(rf and IF and IF("QUtil/Utility.lua") and rf("QUtil/Utility.lua") or getfenv().request and getfenv().request({ Url = url, Method = "GET" }).Body or game:HttpGet(url))() end)()
 
 if g[libN] then
-	-- return g[libN]
+	return g[libN]
 end
 
 local event = util:Event()
@@ -183,7 +182,6 @@ task.spawn(function()
 
 		beforeSpoofing:Fire()
 		for i, v in spoofQueue do
-			(v.Enabled and warn or print)("SETTING", v, v.Enabled, v)
 			pcall(v.Set, v)
 		end
 
