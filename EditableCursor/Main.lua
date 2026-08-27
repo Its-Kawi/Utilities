@@ -50,19 +50,24 @@ task.spawn(function()
 	cursorsGUI.Parent = getfenv().gethui and getfenv().gethui() or game:GetService("CoreGui") or plr:WaitForChild("PlayerGui")
 end)
 
+pcall(function()
+	cursorsGUI.OnTopOfCoreBlur = true
+end)
+
 cursorsGUI.IgnoreGuiInset = false
 cursorsGUI.ResetOnSpawn = false
 cursorsGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 cursorsGUI.DisplayOrder = 2147483647
 cursorsGUI.Name = "Editable Cursor Library"
 
-local cursor = Instance.new("Frame", cursorsGUI)
+local cursor = Instance.new("CanvasGroup", cursorsGUI)
 cursor.BackgroundTransparency = 1
 cursor.AnchorPoint = Vector2.new(0.25, 0.25)
 cursor.Size = UDim2.fromOffset(50, 50) -- that gonna be variable + actual size gonna be x2 smaller
 cursor.Name = "Cursor Holder"
 
-local cursorDefault = cursor:Clone() do
+local cursorDefault = Instance.new("Frame") do
+	cursorDefault.BackgroundTransparency = 1
 	cursorDefault.AnchorPoint = Vector2.new(0.5, 0.5)
 	cursorDefault.Size = UDim2.fromScale(0.5, 0.5)
 	cursorDefault.Position = cursorDefault.Size
@@ -275,6 +280,8 @@ local cursorLib = {
 		local cursorData = {
 			Active = false,
 			Destroyed = false,
+			
+			Transparency = 0,
 
 			Priority = 0,
 			_Priority = 0,
@@ -367,11 +374,12 @@ task.spawn(function() -- HANDLE CURSORS
 		local currentCursor = queue[1]
 		if not currentCursor then return false end
 
+		cursor.GroupTransparency = currentCursor.Transparency
 		cursor.Size = U2o(currentCursor.Size * 2, currentCursor.Size * 2)
 
 		local isActive = uis.MouseEnabled and mouseActive and windowActive and not guiServ.MenuIsOpen and uis.MouseBehavior ~= mblc and currentCursor.Active
 		local frame = currentCursor.Frame
-
+		
 		frame.Visible = isActive
 		frame.AnchorPoint = currentCursor.Centered and v2(1, 1) or v2(0.5, 0.5)
 
