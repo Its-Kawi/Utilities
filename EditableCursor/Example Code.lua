@@ -10,7 +10,7 @@ local Cursor1 = CursorLib.new() do -- Creating a new Cursor and adding effects t
 	Cursor1.Effects[2]:Destroy() -- Remove the Stroke (#2), now Blurred3D becomes the 2nd effect (#2)
 end
 
-local Cursor2 = CursorLib.new({
+local Cursor2 = CursorLib.new({ -- Creating a new Cursor and pre-defining it's effects using a table
 	CursorLib:Glitch({ Visible = false })
 }) do
 	Cursor2.Size = 30 -- 10 pixels bigger than Cursor1
