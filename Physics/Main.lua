@@ -1,8 +1,9 @@
 local libN = "PhyLib"
 local g = (getfenv().getgenv or function() return _G end)()
 
+g[libN] = { }
 if g[libN] then
-	return g[libN]
+	-- return g[libN]
 end
 
 local pack = table.pack
@@ -29,18 +30,16 @@ local rad = math.rad
 local look = CFrame.lookAt
 local workspace = workspace
 local clamp = math.clamp
+local newproxy = newproxy
 
 local zero = v3(0, 0, 0)
 local cfz = ncf()
-
-local ino = getfenv().isnetworkowner
-local ghp = getfenv().gethiddenproperty
 
 local GITHUB = "https://raw.githubusercontent.com/Its-Kawi/"
 local util = (getfenv().getgenv or function() return _G end)().QKUtil or (function() local url = GITHUB .. "Utilities/refs/heads/main/Utility/Main.lua" local rf, IF = getfenv().readfile or getfenv().read_file, getfenv().isfile or getfenv().is_file return loadstring(rf and IF and IF("QUtil/Utility.lua") and rf("QUtil/Utility.lua") or getfenv().request and getfenv().request({ Url = url, Method = "GET" }).Body or game:HttpGet(url))() end)()
 
 if g[libN] then
-	return g[libN]
+	-- return g[libN]
 end
 
 local event = util:Event()
@@ -51,8 +50,12 @@ local function fr()
 end
 
 local spoofQueue = { }
-local spooferBase = {
+local spooferToData = { }
+
+local _spooferBase = {
 	Set = function(self)
+		self = spooferToData[self] if not self then return end
+		
 		if not self.Enabled or not self.Object then return end
 		self.BeforeSet:Fire()
 
@@ -64,14 +67,16 @@ local spooferBase = {
 		originalValues.Velocity = object.AssemblyLinearVelocity
 		originalValues.RotVelocity = object.AssemblyAngularVelocity
 
-		object.CFrame = (props.CFrame or object.CFrame) * (props.OffsetCFrame or cfz)
-		object.AssemblyLinearVelocity = (props.Velocity or object.AssemblyLinearVelocity) + (props.OffsetVelocity or zero) + v3(fr() / 2, fr() / 2, fr() / 2)
-		object.AssemblyAngularVelocity = (props.RotVelocity or object.AssemblyAngularVelocity) + (props.OffsetRotVelocity or zero)
+		object.CFrame = (props.CFrame or object.CFrame) * (props.OffsetCFrame or cfz) * (ncf(fr() / 1000, fr() / 1000, fr() / 1000) * xyz(fr() / 100000, fr() / 100000, fr() / 100000))
+		object.AssemblyLinearVelocity = (props.Velocity or object.AssemblyLinearVelocity) + (props.OffsetVelocity or zero) + v3(fr() / 1000, fr() / 1000, fr() / 1000)
+		object.AssemblyAngularVelocity = (props.RotVelocity or object.AssemblyAngularVelocity) + (props.OffsetRotVelocity or zero) + v3(fr() / 1000, fr() / 1000, fr() / 1000)
 
 		originalValues.NewCFrame = object.CFrame
 		self.AfterSet:Fire()
 	end,
 	Restore = function(self)
+		self = spooferToData[self] if not self then return end
+
 		if not self.Object then return end
 		self.BeforeRestore:Fire()
 
@@ -85,7 +90,7 @@ local spooferBase = {
 		if newCFrame then
 			if (object.Position - newCFrame.Position).Magnitude >= 0.01 then -- teleported
 				originalValues.CFrame = nil
-				originalValues.Velocity = props.Velocity and props.Velocity + v3(fr() / 2, fr() / 2, fr() / 2) or originalValues.Velocity or zero
+				originalValues.Velocity = props.Velocity and props.Velocity + v3(fr() / 10, fr() / 10, fr() / 10) or originalValues.Velocity or zero
 			end
 		end
 
@@ -105,9 +110,25 @@ local spooferBase = {
 	end
 }
 
-spooferBase = {
-	__index = spooferBase,
+local spooferBase = {
+	__index = function(self, index)
+		self = spooferToData[self]
+		
+		local got = _spooferBase[index]
+		if got == nil then
+			if not self then return end
+			got = self.Properties[index]
+			
+			if got == nil then
+				got = self[index]
+			end
+		end
+		
+		return got
+	end,
 	__newindex = function(self, index, value)
+		self = spooferToData[self] if not self then error() end
+
 		if index == "Enabled" then
 			rawset(self, index, not not value)
 		elseif index == "Object" then
@@ -116,19 +137,32 @@ spooferBase = {
 			self.Properties[index] = value
 		end
 	end,
+	__metatable = "Spoofer",
+	__tostring = function(self)
+		if not self then return "nil Spoofer" end
+		return self.Object and self.Object:GetFullName() .. " Spoofer" or "None Spoofer"
+	end
 }
 
 local newSpoofer = function(object)
-	local self = smt({ Properties = { }, OriginalValues = { }, BeforeSet = event.new(), AfterSet = event.new(), BeforeRestore = event.new(), AfterRestore = event.new(), Enabled = true, Object = object }, spooferBase)
-	insert(spoofQueue, self)
-
-	return self
+	local spooferData = { Properties = { }, OriginalValues = { }, BeforeSet = event.new(), AfterSet = event.new(), BeforeRestore = event.new(), AfterRestore = event.new(), Enabled = true, Object = object }
+	local proxy = newproxy(true)
+	local meta = getmetatable(proxy)
+	
+	for i, v in spooferBase do
+		meta[i] = v
+	end
+	
+	insert(spoofQueue, proxy)
+	spooferToData[proxy] = spooferData
+	
+	return proxy
 end
 
 local rs = game:GetService("RunService")
-local hb = rs.Heartbeat
+local hb = rs.PostSimulation
 local rns = rs.RenderStepped
-local s = rs.Stepped
+local s = rs.PreAnimation
 
 local plrs = game:GetService("Players")
 local plr = plrs.LocalPlayer
@@ -149,14 +183,15 @@ task.spawn(function()
 
 		beforeSpoofing:Fire()
 		for i, v in spoofQueue do
-			v:Set()
+			(v.Enabled and warn or print)("SETTING", v, v.Enabled, v)
+			pcall(v.Set, v)
 		end
 
 		afterSpoofing:Fire()
 		rns:Wait()
 
 		for i, v in spoofQueue do
-			v:Restore()
+			pcall(v.Restore, v)
 		end
 
 		s:Wait()
@@ -180,6 +215,16 @@ playerSpoofer.BeforeRestore:Connect(function()
 		prev = cam.CFrame
 	end
 end)
+
+local can = pcall(function() plr.DevCameraOcclusionMode = plr.DevCameraOcclusionMode end)
+if can then
+	local original = plr.DevCameraOcclusionMode
+	local invis = Enum.DevCameraOcclusionMode.Invisicam
+	
+	rs.PreRender:Connect(function()
+		plr.DevCameraOcclusionMode = lib.Spoofer.Enabled and playerSpoofer.Enabled and invis or original
+	end)
+end
 
 lib = freeze({
 	Spoofer = {
