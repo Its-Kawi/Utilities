@@ -123,7 +123,7 @@ local function createEffect(effectName)
 	image.Size = effectData[5]
 	image.Position = U2s(0.5, 0.5)
 
-	return image, effectData[6], effectData[7]
+	return image, effectData[6], effectData[7], effectData[3]
 end
 
 local defaultEffectOptions = {
@@ -135,6 +135,14 @@ local defaultEffectOptions = {
 	Destroy = function(self)
 		self.Destroyed = true
 		self.Effect:Destroy()
+
+		if self.Cursor then
+			local cursorEffects = self.Cursor.Effects
+			local me = find(cursorEffects, self)
+			if me then
+				remove(cursorEffects, me)
+			end
+		end
 
 		return self
 	end,
@@ -155,7 +163,7 @@ local defaultEffectOptions = {
 
 local function newEffect(effectName, options)
 	local options = options or { }	
-	local effect, putBehind, defaultColor = createEffect(effectName)
+	local effect, putBehind, defaultColor, name = createEffect(effectName)
 
 	if options.Color == nil then
 		options.Color = defaultColor or defaultEffectOptions.Color
@@ -167,6 +175,8 @@ local function newEffect(effectName, options)
 		end
 	end
 
+	options.NameShort = effectName
+	options.Name = name
 	options.Effect = effect
 	options.PutBehind = putBehind
 	options.Destroyed = false
@@ -175,7 +185,7 @@ local function newEffect(effectName, options)
 end
 
 local cursorProxyData = { }
-local cursorBase = {
+local CursorBase = {
 	Destroy = function(self)
 		local self = cursorProxyData[self]
 		if not self then return end
@@ -189,14 +199,14 @@ local cursorBase = {
 }
 
 for i, v in EFFECTS do
-	cursorBase[i] = function(self, options)
+	CursorBase[i] = function(self, options)
 		local effect = newEffect(i, options)
 		if effect.Destroyed then return end
 
 		effect.Effect.Parent = self.Frame[effect.PutBehind and "Behind" or "Infront"]
 		effect.Cursor = self
 
-		return effect
+		return self
 	end
 end
 
@@ -209,7 +219,7 @@ local cursorBase = {
 		local self = cursorProxyData[self]
 		if not self then return end
 
-		local ret = cursorBase[index]
+		local ret = CursorBase[index]
 		if ret == nil then ret = self[index] end
 
 		return ret
@@ -280,7 +290,7 @@ local cursorLib = {
 		local cursorData = {
 			Active = false,
 			Destroyed = false,
-			
+
 			Transparency = 0,
 
 			Priority = 0,
@@ -304,10 +314,14 @@ local cursorLib = {
 
 		insert(cursors, proxy)
 
-		for i, v in proxy.Effects do
+		local effects = proxy.Effects
+		for i = #effects, 1, -1 do
+			local v = effects[i]
 			if not v.Destroyed then
 				v.Effect.Parent = newCursor[v.PutBehind and "Behind" or "Infront"]
 				v.Cursor = proxy
+			else
+				remove(effects, i)
 			end
 		end
 
@@ -379,7 +393,7 @@ task.spawn(function() -- HANDLE CURSORS
 
 		local isActive = uis.MouseEnabled and mouseActive and windowActive and not guiServ.MenuIsOpen and uis.MouseBehavior ~= mblc and currentCursor.Active
 		local frame = currentCursor.Frame
-		
+
 		frame.Visible = isActive
 		frame.AnchorPoint = currentCursor.Centered and v2(1, 1) or v2(0.5, 0.5)
 
