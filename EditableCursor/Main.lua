@@ -396,7 +396,7 @@ task.spawn(function() -- HANDLE CURSORS
 		cursor.GroupTransparency = currentCursor.Transparency
 		cursor.Size = U2o(currentCursor.Size * 2, currentCursor.Size * 2)
 
-		local isActive = uis.MouseEnabled and mouseActive and windowActive and not guiServ.MenuIsOpen and uis.MouseBehavior ~= mblc and currentCursor.Active
+		local isActive = uis.MouseEnabled and mouseActive and windowActive and not guiServ.MenuIsOpen and currentCursor.Active
 		local frame = currentCursor.Frame
 
 		frame.Visible = isActive
