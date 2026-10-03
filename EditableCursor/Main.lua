@@ -439,30 +439,16 @@ task.spawn(function() -- HANDLE CURSORS
 
 		return true
 	end
-
-	local old = uis.MouseIconEnabled
-
-	local set = false
-	local set2 = false
 	
+	local set = true
 	local function cycle()
-		local success = refreshCursor()
-		local targetEnabled = not success and old or success and false
-
-		if not targetEnabled then
+		if refreshCursor() then
 			set = false
-			
-			if not set2 then
-				set2 = false
-				old = uis.MouseIconEnabled
-				uis.MouseIconEnabled = targetEnabled
-			end
+			uis.MouseIconEnabled = false
 		else
-			set2 = false
-			
 			if not set then
 				set = true
-				uis.MouseIconEnabled = old
+				uis.MouseIconEnabled = true
 			end
 		end
 	end
