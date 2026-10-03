@@ -280,7 +280,7 @@ local cursorBase = {
 		if not self.Active then
 			self.Frame.Visible = false
 		end
-	end,
+	end
 }
 
 local cursors = { }
@@ -384,8 +384,12 @@ task.spawn(function() -- HANDLE CURSORS
 	end)
 
 	local mblc = Enum.MouseBehavior.LockCenter
+	local last
 	local function refreshCursor()
 		cursor.Position = U2o(mouse.X, mouse.Y)
+		for i, v in cursor:GetChildren() do
+			v.Visible = false
+		end
 
 		local queue = activeQueue[biggestPriority]
 		if not queue then return false end
