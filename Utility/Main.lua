@@ -9,10 +9,11 @@ local utils = {
 	Other = "Util",
 	Fire = "Util",
 	EditableCursor = "Util",
-	
+	KeyEnums = "Util",
+
 	Desync = "Url",
 	UI = "Url",
-	
+
 	NullFireWindow = "NF",
 	FunkyFridayAutoPlay = "NF",
 	PressureTubePuzzle = "NF"
@@ -26,10 +27,10 @@ local utilGlobalKeys = {
 	Other = "NFOtherLib",
 	Fire = "FIRELIB_omg_UI_lib_name_drop",
 	EditableCursor = "EditableCursorLib",
-	
+
 	Desync = "DesyncLib",
 	UI = "FireLibrary",
-	
+
 	NullFireWindow = "NFWINDOW",
 	FunkyFridayAutoPlay = "FFAutoplayLib",
 	PressureTubePuzzle = "PressureTubes"
@@ -53,10 +54,11 @@ local nfPaths = {
 
 local shortcuts = {
 	ESP = "ESPLib",
-	Cursor = "EditableCursor"
+	Cursor = "EditableCursor",
+	Keys = "KeyEnums"
 }
 
-local preload = { "Event", "Physics", "Desync", "Typer", "Other", "Fire" }
+local preload = { "Event", "Physics", "Desync", "Typer", "Other", "Fire", "KeyEnums" }
 
 local global = getgenv and getgenv() or _G
 local globalKey = "QKUtil"
@@ -262,7 +264,7 @@ spawn(function()
 	for i, module in modules do
 		pcall(downloadModule, module, true)
 		local s, f = pcall(bruteforceLoadModule, module)
-		
+
 		if s and find(preload, module) then
 			pcall(f)
 		end
