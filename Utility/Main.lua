@@ -80,9 +80,9 @@ local utilityPrefix = "-- This is the main utility loader. Its used for quickly 
 local function httpGet(url, headers, retry)
 	local tries = 0
 	local allowed = tonumber(retry) or 1 / 0
-	retry = allowed ~= 1 / 0
+	retry = retry ~= nil and allowed ~= 1 / 0
 
-	while tries <= allowed do
+	while retry and tries <= allowed do
 		tries += 1
 
 		local r, s
@@ -297,9 +297,9 @@ local util = setmetatable({
 	HttpPost = function(self, url, body, headers, retry)
 		local tries = 0
 		local allowed = tonumber(retry) or 1 / 0
-		retry = allowed ~= 1 / 0
-		
-		while tries <= allowed do
+		retry = retry ~= nil and allowed ~= 1 / 0
+
+		while retry and tries <= allowed do
 			tries += 1
 			
 			local r, s
