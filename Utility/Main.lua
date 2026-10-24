@@ -77,13 +77,26 @@ local wf, rf, mf, IF, df, DF, re = writefile or write_file, readfile or read_fil
 local loadstring, tonumber, game, error, warn, freeze, spawn, pcall, tick, tostring = loadstring or load, tonumber, game, error, warn, table.freeze, task and task.spawn or spawn, pcall, tick, tostring
 local utilityPrefix = "-- This is the main utility loader. Its used for quickly loading without needing to be downloaded\n"
 
-local function httpGet(url, headers)
-	if re then
-		local r = re({ Url = url, Method = "GET", Headers = headers })
-		return r.Body or "", r.Success
-	else
-		local s, r = pcall(game.HttpGet, game, url, true, headers)
-		return s, r
+local function httpGet(url, headers, retry)
+	local tries = 0
+	local allowed = tonumber(retry) or 1 / 0
+	retry = allowed ~= 1 / 0
+
+	while tries <= allowed do
+		tries += 1
+
+		local r, s
+		if re then
+			r = re({ Url = url, Method = "GET", Headers = headers })
+			s = r.Success and r.StatusCode <= 400
+			r = r.Body or ""
+		else
+			s, r = pcall(game.HttpGet, game, url, true, headers)
+		end
+
+		if not retry or s then
+			return r
+		end
 	end
 end
 
@@ -278,16 +291,29 @@ local util = setmetatable({
 	Utililites = modules,
 	Utils = modules,
 
-	HttpGet = function(self, url, headers)
-		return httpGet(url, headers)
+	HttpGet = function(self, url, headers, retry)
+		return httpGet(url, headers, retry)
 	end,
-	HttpPost = function(self, url, body, headers)
-		if re then
-			local r = re({ Url = url, Method = "POST", Body = body, Headers = headers })
-			return r.Body, r.Success
-		else
-			local s, r = pcall(game.HttpPost, game, url, body, headers)
-			return r, s
+	HttpPost = function(self, url, body, headers, retry)
+		local tries = 0
+		local allowed = tonumber(retry) or 1 / 0
+		retry = allowed ~= 1 / 0
+		
+		while tries <= allowed do
+			tries += 1
+			
+			local r, s
+			if re then
+				r = re({ Url = url, Method = "POST", Body = body, Headers = headers })
+				s = r.Success and r.StatusCode <= 400
+				r = r.Body or ""
+			else
+				s, r = pcall(game.HttpPost, game, url, body, headers)
+			end
+			
+			if not retry or s then
+				return r
+			end
 		end
 	end
 }, freeze({
