@@ -72,10 +72,22 @@ local utilVerCheckFile = coreFolder .. "VCheck.txt"
 local utilsFolder = coreFolder .. "Utilities/"
 local cacheFolder = coreFolder .. "Cache/"
 
-local wf, rf, mf, IF, df, DF, re = writefile or write_file, readfile or read_file, makefolder or make_folder, isfile or is_file, deletefolder or delfolder or removefolder or delete_folder or del_folder or remove_folder, deletefile or delfile or removefile or delete_file or del_fire or remove_file, request or http_request
+local wf, rf, mf, IF, If, df, DF, re, lf = writefile, readfile, makefolder, isfile or is_file, isfolder or is_folder, deletefolder or delfolder or removefolder, deletefile or delfile or removefile, request or http_request, listfiles
 local loadstring, tonumber, game, error, warn, freeze, spawn, pcall, tick, tostring = loadstring or load, tonumber, game, error, warn, table.freeze, task and task.spawn or spawn, pcall, tick, tostring
 local utilityPrefix = "-- This is the main utility loader. Its used for quickly loading without needing to be downloaded\n"
 local pack, remove, unpack, wait = table.pack, table.remove, unpack or table.unpack, task and task.wait or wait
+
+local recurviseDelete; function recurviseDelete(name)
+	if If(name) then
+		for _, v in lf(name) do
+			recurviseDelete(v)
+		end
+		
+		pcall(df, name)
+	elseif IF(name) then
+		pcall(DF, name)
+	end
+end
 
 local function httpGet(url, headers, retry)
 	local tries = 0
@@ -115,7 +127,7 @@ if wf and rf and mf and df and IF and DF then
 			local loadTest = loadstring(self)
 
 			if loadTest then
-				pcall(df, coreFolder:sub(1, -2))
+				pcall(recurviseDelete, coreFolder:sub(1, -2))
 				pcall(DF, "FireLibrary/Library" .. ext) -- force UI library to update
 
 				pcall(mf, coreFolder:sub(1, -2))
@@ -211,12 +223,8 @@ local function updCheck(hash)
 	if IF(extFile) then
 		local n = tonumber(rf(extFile))
 		if n and n > expiryTime then
-			df(extFile)
-
-			local filePath = utilsFolder .. hash .. ext
-			if IF(filePath) then
-				df(filePath)
-			end
+			recurviseDelete(extFile)
+			recurviseDelete(utilsFolder .. hash .. ext)
 		end
 	end
 end
