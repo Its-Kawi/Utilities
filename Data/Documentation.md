@@ -1,241 +1,183 @@
-# Data library documentation
+# DataLibrary
 
-## Installation
-Add this library to your Lua environment using the following code:
+**DataLibrary** is a lightweight messaging library for Roblox exploit environments. It lets scripts communicate through named channels, send data to other users, receive messages, and handle raw string messages without having to build the entire communication system yourself.
+
+The source is obfuscated, so this documentation covers the public API rather than its internal implementation.
+
+## Requirements
+
+- A Roblox exploit environment that supports `loadstring`, `game:HttpGet`, and the required HTTP functionality.
+- WebSocket support is recommended for more responsive message delivery. HTTP polling is used as a fallback.
+
+**Important:** This library is designed for exploit environments and is not intended to run as a normal Roblox Studio ModuleScript.
+
+## Loading the Library
+
 ```lua
-local DataLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/Null-Cherry/Utilities/refs/heads/main/Data/Main.lua", true))()
+local DataLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/Its-Kawi/Utilities/refs/heads/main/Data/Main.lua"))()
 ```
 
-## Overview
-Data library is a cross-server communication library that allows data sharing between users on the same channel, regardless of the Roblox game they're currently in. The library provides a simple event-based system for sending and receiving messages across servers.
+The library is cached globally, so loading it again in the same environment returns the existing instance.
 
-## Core Concepts
-- **Channels**: Communication groups where messages are broadcasted
-- **Server-wide**: Data is shared across all servers running the same channel
-- **Event-driven**: Uses listeners to handle incoming messages
-- **Player Validation**: Verify player identity across servers
+## Creating a Channel
 
-## Basic Usage
+Channels are used to organize communication. Scripts using the same channel name can communicate through that channel.
 
-### Creating a Channel
 ```lua
-local myChannel = DataLibrary.new("MyChannelName")
-```
-If no channel name is provided, it defaults to "Global":
-```lua
-local globalChannel = DataLibrary.new() -- Uses "Global" channel
+local Channel = DataLib.new("MyChannel")
 ```
 
-### Channel Properties
-```lua
-myChannel.Enabled = true -- Enable/disable the channel (default: true)
-myChannel.Rate = 1 -- Polling rate in seconds (default: 1)
-myChannel.Ping = any -- Current ping/latency (read-only)
-myChannel.ChannelName = "MyChannelName" -- Channel identifier (overwriting can cause issues, so keep it read-only)
-myChannel.RecieveOwn = false -- Whether you will receive your own messages (default: false)
-```
-
-## Events
-
-### OnMessage Event
-Listens for JSON-encoded messages:
-```lua
-local connection = myChannel.OnMessage:Connect(function(message, sender, data)
-    -- message: Decoded JSON data
-    -- sender: Player instance (if in same game/server), otherwise nil
-    -- data: Table containing message metadata:
-    --   data.Hash: Encoded player identifier (always available)
-    --   data.Sender: Same as sender parameter
-    --   data.Message: Same as message parameter
-    --   data.Timestamp: When message was recieved on server
-    --   data.MessageId: Unique message identifier made on server
-    --   data.IsRaw: Whether message was sent as raw
-
-    print("Received:", message)
-    if sender then
-        print("From:", sender.Name)
-    end
-
-    print("Message ID:", data.MessageId)
-end)
-```
-
-### OnMessageRaw Event
-Listens for raw (non-JSON) messages:
-```lua
-local connection = myChannel.OnMessageRaw:Connect(function(rawMessage, sender, data)
-    -- rawMessage: Raw string data
-    -- sender: Player instance (if in same game/server), otherwise nil
-    -- data: Table containing message metadata (same structure as OnMessage)
-
-    print("Raw message:", rawMessage)
-    print("Sent at:", data.Timestamp)
-end)
-```
-
-### Event Methods
-```lua
-local event = myChannel.OnMessage
-
--- Connect a callback function
-local connection = event:Connect(function(data)
-    -- Handle event
-end)
-
--- Connect a callback that fires only once
-event:Once(function(data)
-    -- Runs once then automatically disconnects
-end)
-
--- Wait for the next event
-local data = event:Wait() -- Returns when next event fires
-
--- Disconnect an event listener
-connection:Disconnect()
-```
+Each channel provides methods for sending messages and events for receiving them.
 
 ## Sending Messages
 
-### Send JSON Data
+### Send structured data
+
+Use `Send()` to send data that can be serialized by the library.
+
 ```lua
--- Send to all users in the channel
-myChannel:Send({
-    type = "chat",
-    content = "Hello world!"
+Channel:Send({
+    Action = "Update",
+    Value = 100
 })
-
--- Send to specific player (if they're on the same server as you), targetPlayer is a Player from "Players" service, e.g. game:GetService("Players")
-myChannel:Send(dataTable, targetPlayer)
 ```
 
-### Send Raw Data
+### Send raw strings
+
+Use `SendRaw()` when you want to send a plain string instead.
+
 ```lua
--- Send raw string (won't be JSON decoded)
--- if 3rd argument is true, message won't be json encoded, so it MUST be a string
-myChannel:Send("Raw string message", nil, true)
-
--- Send raw to specific player
-myChannel:Send("Raw data", targetPlayer, true)
+Channel:SendRaw("Hello, world!")
 ```
 
-### Asynchronous Sending
+### Send to a specific player
+
+Both methods accept an optional target player or encoded target string.
+
 ```lua
--- Send asynchronously with success/failure return
-local success = myChannel:SendAsync(data, targetPlayer, isRaw)
--- Returns true if sent successfully, false otherwise
-
--- Unsafe asynchronous send (can fail when rate limited)
-local success = myChannel:SendAsyncUnsafe(data, targetPlayer, isRaw)
--- Returns immediately with success/failure status
+Channel:Send("Hello!", targetPlayer)
 ```
+
+When no target is specified, the message is sent without a specific recipient restriction.
+
+### Asynchronous methods
+
+| Method | Description |
+|---|---|
+| `Send(data, target?)` | Sends structured data. |
+| `SendAsync(data, target?)` | Sends structured data and waits for success. |
+| `SendAsyncUnsafe(data, target?)` | Attempts to send once without retrying. |
+| `SendRaw(str, target?)` | Sends a raw string. |
+| `SendRawAsync(str, target?)` | Sends raw data and waits for success. |
+| `SendRawAsyncUnsafe(str, target?)` | Attempts a raw send once without retrying. |
+
+The `Unsafe` methods do not retry failed sends. The regular asynchronous methods retry until a send succeeds, so they can wait indefinitely if the backend remains unavailable.
+
+## Receiving Messages
+
+Use `OnMessage` for structured messages and `OnMessageRaw` for raw strings.
+
+```lua
+Channel.OnMessage:Connect(function(data, sender, message)
+    print("Received:", data)
+    print("Sender:", sender)
+end)
+
+Channel.OnMessageRaw:Connect(function(data, sender, message)
+    print("Raw message:", data)
+end)
+```
+
+The callbacks receive:
+
+- `data` — The decoded message content.
+- `sender` — The corresponding Roblox `Player`, when available.
+- `message` — The complete message information table.
+
+A sender may be `nil` if the corresponding player cannot be resolved.
+
+### Complete message information
+
+The `message` table can contain the following fields:
+
+| Field | Description |
+|---|---|
+| `Hash` | Sender's hash. |
+| `Sender` | Resolved `Player`, if available. |
+| `IsServerMessage` | Whether the message originated from the server (usually always false). |
+| `Message` | Decoded message content. |
+| `Text` | Alias for `Message`. |
+| `Timestamp` | Message timestamp supplied by the backend. |
+| `MessageId` | Message identifier. |
+| `IsRaw` | Whether the message is a raw string. |
+| `ViaHTTP` | Whether the message arrived through HTTP polling. |
+| `ChannelName` | Name of the channel. |
+
+For an event that handles both structured and raw messages, use `MessageReceived`.
+
+```lua
+Channel.MessageReceived:Connect(function(message)
+    print(message.ChannelName, message.Text)
+end)
+```
+
+## Existing Channels
+
+Use `fromExisting()` or `get()` to retrieve a channel by name. If the channel is not already cached locally, the library creates it.
+
+```lua
+local Channel = DataLib.get("MyChannel")
+-- Equivalent:
+local Channel = DataLib.fromExisting("MyChannel")
+```
+
+These methods are useful when multiple parts of a script need to access the same channel.
+
+## Library Properties
+
+| Property | Description |
+|---|---|
+| `DataLib.PollingSpeed` | HTTP polling interval in seconds. Must be greater than `0`. Default: `0.75`. |
+| `DataLib.Ping` | Time taken by the latest HTTP polling operation, in seconds. Starts at `-1`. |
+| `DataLib.DisableWebSockets` | Disables WebSocket connections when set to `true`. |
+
+Example:
+
+```lua
+DataLib.PollingSpeed = 1
+DataLib.DisableWebSockets = true
+```
+
+A lower polling interval can improve HTTP message responsiveness but increases request frequency. WebSockets are generally preferable when available.
+
+## Channel Properties and Methods
+
+| Member | Description |
+|---|---|
+| `Channel.ChannelName` | Channel name. |
+| `Channel.Enabled` | Enables or suppresses delivery to the channel's message events. |
+| `Channel.Disconnected` | Whether the channel has been disconnected. |
+| `Channel.Ping` | Time since the last message received by this channel, in seconds. |
+| `Channel:Disconnect()` | Disconnects the channel's local message listener. |
+
+`Disconnect()` does not delete the remote channel. It stops the channel from processing further incoming events locally.
 
 ## Player Validation
 
-### Validate Player Identity
-```lua
--- Verify if a player ID matches their encoded hash
-local isValid = DataLibrary:ValidatePlayer(playerId, hash)
--- Returns true if the player ID matches the hash, false otherwise
--- hash can be either a string or the data table from event handlers
+`Validate()` checks whether a Roblox user ID matches an encoded player identifier.
 
--- Example usage in event handler
-myChannel.OnMessage:Connect(function(message, sender, data)
-    if sender then
-        -- Player is in same server
-        print("Local player:", sender.Name)
-    else
-        -- Cross-server player - validate identity
-        local playerId = message.playerId -- Extract from your message format
-        if DataLibrary:ValidatePlayer(playerId, data.Hash) then
-            print("Validated cross-server player:", playerId)
-        end
-    end
-end)
+```lua
+local valid = DataLib:Validate(userId, hash)
 ```
 
-## Important Notes
+Returns `true` if the identifier matches, otherwise `false`.
 
-### Player Detection
-- The `sender` parameter in events will be a Player instance **only if** that player is in the same Roblox game and server
-- If the sender is in a different server, `sender` will be `nil`
-- The `data.Hash` parameter always contains an encoded player identifier, even for cross-server communication
-- `DataLibrary:ValidatePlayer(userId, hash)` validates if a user ID matches the encoded hash
-- `ValidatePlayer` can be called with `data` table directly, e.g. `DataLibrary:ValidatePlayer(playerId, data)`, not `DataLibrary:ValidatePlayer(playerId, data.Hash)`
-- This allows for cross-server communication while maintaining privacy and player identification
+## Notes
 
-## Example Usage
-
-### Basic Chat System with Player Validation
-```lua
-local DataLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/Null-Cherry/Utilities/refs/heads/main/Data/Main.lua", true))()
-
-local chatChannel = DataLibrary.new("GlobalChat")
-
--- Listen for messages
-chatChannel.OnMessage:Connect(function(message, sender, data)
-    if sender then
-        print(sender.Name .. ": " .. message.content)
-    else
-        -- Validate cross-server player
-        if DataLibrary:ValidatePlayer(message.authorId, data) then
-            print("[Cross-server] " .. message.author .. ": " .. message.content)
-        else
-            print("[Unverified]: " .. message.content)
-        end
-    end
-end)
-
--- Send a message with author info
-chatChannel:Send({
-    content = "Hello from another server!",
-    author = game.Players.LocalPlayer.Name, -- bad, you should better get player name using services like UserService or Players
-    authorId = game.Players.LocalPlayer.UserId
-})
-```
-
-### Cross-Server Notifications with Async Sending
-```lua
-local notifyChannel = DataLibrary.new("Notifications")
-
-notifyChannel.OnMessage:Connect(function(notification, sender, data)
-    if notification.type == "achievement" then
-        if DataLibrary:ValidatePlayer(notification.playerId, data.Hash) then
-            print(notification.player .. " unlocked: " .. notification.achievement)
-        end
-    end
-end)
-
--- Broadcast achievement unlock with guaranteed delivery
-local success = notifyChannel:SendAsync({
-    type = "achievement",
-    player = game.Players.LocalPlayer.Name,
-    playerId = game.Players.LocalPlayer.UserId,
-    achievement = "Master Explorer"
-})
-
-if success then
-    print("Achievement broadcast successfully!")
-end
-```
-
-### Real-time Updates with Faster Polling
-```lua
-local updateChannel = DataLibrary.new("RealTimeUpdates")
-updateChannel.Rate = 0.5 -- Poll every 0.5 seconds for faster updates
-
-updateChannel.OnMessageRaw:Connect(function(rawData, sender, data)
-    -- Process raw data for performance-critical applications
-    print("Update received:", rawData, "at", data.Timestamp)
-end)
-```
-
-## Best Practices
-1. Use descriptive channel names to avoid conflicts
-2. Always check if `sender` is `nil` before using player-specific methods
-3. Use JSON encoding for structured data, raw for simple strings
-4. Adjust the `Rate` property based on your needs (lower = faster polling)
-5. Disable channels when not in use to reduce network traffic
-6. Use `SendAsync()` for guaranteed message delivery when needed
-7. Validate cross-server players using `ValidatePlayer()` for security
-8. Include player IDs in your message format for validation purposes
-9. If you gonna include player ID in the message, make sure you use encoding for that and obfuscate your code
+- Channel names should be consistent between communicating scripts.
+- Structured messages must contain data supported by the library's serializer.
+- Raw messages must be strings. Raw messsages differ from normal ones, because they are not encoded by the library
+- `SendAsync()` and `SendRawAsync()` can wait indefinitely if sending never succeeds.
+- WebSocket availability depends on the executor environment.
+- The library uses a remote backend, so delivery depends on backend availability and connectivity.
+- Obfuscation does not replace server-side access controls. Do not treat channel names or encoded identifiers as authentication or assume messages are private or trusted.
