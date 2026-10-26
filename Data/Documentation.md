@@ -1,6 +1,6 @@
 # DataLibrary
 
-**DataLibrary** is a lightweight messaging library for Roblox exploit environments. It lets scripts communicate through named channels, send data to other users, receive messages, and handle raw string messages without having to build the entire communication system yourself.
+**DataLibrary** is a lightweight messaging library for Roblox exploit environments. It lets scripts communicate through named channels, send data to other users, receive messages, and handle raw string messages without building the communication system yourself.
 
 The source is obfuscated, so this documentation covers the public API rather than its internal implementation.
 
@@ -21,7 +21,7 @@ The library is cached globally, so loading it again in the same environment retu
 
 ## Creating a Channel
 
-Channels are used to organize communication. Scripts using the same channel name can communicate through that channel.
+Channels organize communication. Scripts using the same channel name can communicate through that channel.
 
 ```lua
 local Channel = DataLib.new("MyChannel")
@@ -33,7 +33,7 @@ Each channel provides methods for sending messages and events for receiving them
 
 ### Send structured data
 
-Use `Send()` to send data that can be serialized by the library.
+Use `Send()` to send data supported by the library's serializer.
 
 ```lua
 Channel:Send({
@@ -44,11 +44,13 @@ Channel:Send({
 
 ### Send raw strings
 
-Use `SendRaw()` when you want to send a plain string instead.
+Use `SendRaw()` to send a plain string without passing it through the structured serializer.
 
 ```lua
 Channel:SendRaw("Hello, world!")
 ```
+
+Raw messages must be strings. They still pass through the library's message encoding process.
 
 ### Send to a specific player
 
@@ -60,18 +62,23 @@ Channel:Send("Hello!", targetPlayer)
 
 When no target is specified, the message is sent without a specific recipient restriction.
 
-### Asynchronous methods
+### Send methods
 
 | Method | Description |
 |---|---|
-| `Send(data, target?)` | Sends structured data. |
-| `SendAsync(data, target?)` | Sends structured data and waits for success. |
-| `SendAsyncUnsafe(data, target?)` | Attempts to send once without retrying. |
-| `SendRaw(str, target?)` | Sends a raw string. |
-| `SendRawAsync(str, target?)` | Sends raw data and waits for success. |
-| `SendRawAsyncUnsafe(str, target?)` | Attempts a raw send once without retrying. |
+| `Send(data, target?)` | Sends structured data through the library's asynchronous wrapper. |
+| `SendAsync(data, target?)` | Retries until the structured message sends successfully. |
+| `SendAsyncUnsafe(data, target?)` | Attempts one structured send without retrying. |
+| `SendRaw(str, target?)` | Sends a raw string through the library's asynchronous wrapper. |
+| `SendRawAsync(str, target?)` | Retries until the raw message sends successfully. |
+| `SendRawAsyncUnsafe(str, target?)` | Attempts one raw send without retrying. |
+| `TrySend(data, target?, isRaw?)` | Attempts one send and returns its success status and elapsed time. |
 
-The `Unsafe` methods do not retry failed sends. The regular asynchronous methods retry until a send succeeds, so they can wait indefinitely if the backend remains unavailable.
+The retrying asynchronous methods can wait indefinitely if the backend remains unavailable.
+
+`SendAsync()` and `SendRawAsync()` return `true` and the total elapsed time in seconds after successfully sending. Their timing includes send attempts and retry delays.
+
+The single-attempt methods return a success status and the elapsed time for the attempt, except when sending is disabled, in which case `TrySend()` returns `false`.
 
 ## Receiving Messages
 
@@ -98,35 +105,42 @@ A sender may be `nil` if the corresponding player cannot be resolved.
 
 ### Complete message information
 
-The `message` table can contain the following fields:
-
 | Field | Description |
 |---|---|
-| `Hash` | Sender's hash. |
+| `Hash` | Encoded sender identifier. |
 | `Sender` | Resolved `Player`, if available. |
-| `IsServerMessage` | Whether the message originated from the server (usually always false). |
+| `IsServerMessage` | Whether the message originated from the server. |
 | `Message` | Decoded message content. |
 | `Text` | Alias for `Message`. |
-| `Timestamp` | Message timestamp supplied by the backend. |
+| `Timestamp` | Timestamp supplied by the backend. |
+| `Took` | Computed message timing value, in seconds. |
 | `MessageId` | Message identifier. |
 | `IsRaw` | Whether the message is a raw string. |
 | `ViaHTTP` | Whether the message arrived through HTTP polling. |
 | `ChannelName` | Name of the channel. |
 
-For an event that handles both structured and raw messages, use `MessageReceived`.
+### Receiving the complete message
+
+Use `MessageReceived` when you need the complete message table instead of separate callback arguments.
 
 ```lua
 Channel.MessageReceived:Connect(function(message)
-    print(message.ChannelName, message.Text)
+    print("Channel:", message.ChannelName)
+    print("Content:", message.Text)
+    print("Sender:", message.Sender)
+    print("Timing:", message.Took)
 end)
 ```
 
+`MessageReceived` fires for both structured and raw messages, provided the channel is enabled.
+
 ## Existing Channels
 
-Use `fromExisting()` or `get()` to retrieve a channel by name. If the channel is not already cached locally, the library creates it.
+Use `get()` or `fromExisting()` to retrieve a channel by name. If the channel is not already cached locally, the library creates it.
 
 ```lua
 local Channel = DataLib.get("MyChannel")
+
 -- Equivalent:
 local Channel = DataLib.fromExisting("MyChannel")
 ```
@@ -137,8 +151,8 @@ These methods are useful when multiple parts of a script need to access the same
 
 | Property | Description |
 |---|---|
-| `DataLib.PollingSpeed` | HTTP polling interval in seconds. Must be greater than `0`. Default: `0.75`. |
-| `DataLib.Ping` | Time taken by the latest HTTP polling operation, in seconds. Starts at `-1`. |
+| `DataLib.PollingSpeed` | HTTP polling interval in seconds. Must be greater than `0`. Default: `0.35`. |
+| `DataLib.Ping` | Latest library timing value, in seconds. Starts at `-1`. |
 | `DataLib.DisableWebSockets` | Disables WebSocket connections when set to `true`. |
 
 Example:
@@ -150,6 +164,8 @@ DataLib.DisableWebSockets = true
 
 A lower polling interval can improve HTTP message responsiveness but increases request frequency. WebSockets are generally preferable when available.
 
+`DataLib.Ping` may reflect the duration of an HTTP polling operation or the timing value calculated when a message is received.
+
 ## Channel Properties and Methods
 
 | Member | Description |
@@ -157,10 +173,10 @@ A lower polling interval can improve HTTP message responsiveness but increases r
 | `Channel.ChannelName` | Channel name. |
 | `Channel.Enabled` | Enables or suppresses delivery to the channel's message events. |
 | `Channel.Disconnected` | Whether the channel has been disconnected. |
-| `Channel.Ping` | Time since the last message received by this channel, in seconds. |
+| `Channel.Ping` | Timing value associated with the latest received message. Starts at `DataLib.Ping`. |
 | `Channel:Disconnect()` | Disconnects the channel's local message listener. |
 
-`Disconnect()` does not delete the remote channel. It stops the channel from processing further incoming events locally.
+`Disconnect()` does not delete the remote channel. It disconnects the local listener, stops further message event delivery, and resets the channel's ping value to `-1`.
 
 ## Player Validation
 
@@ -176,8 +192,9 @@ Returns `true` if the identifier matches, otherwise `false`.
 
 - Channel names should be consistent between communicating scripts.
 - Structured messages must contain data supported by the library's serializer.
-- Raw messages must be strings. Raw messsages differ from normal ones, because they are not encoded by the library
-- `SendAsync()` and `SendRawAsync()` can wait indefinitely if sending never succeeds.
+- Raw messages must be strings and bypass the structured serializer.
+- The retrying send methods can wait indefinitely if sending never succeeds.
 - WebSocket availability depends on the executor environment.
-- The library uses a remote backend, so delivery depends on backend availability and connectivity.
-- Obfuscation does not replace server-side access controls. Do not treat channel names or encoded identifiers as authentication or assume messages are private or trusted.
+- Message delivery depends on the remote backend and network connectivity.
+- The library caches generated message payloads internally. Avoid assuming that changing the target or message type while reusing the same data value will always generate a fresh payload in this version.
+- Obfuscation does not replace server-side access controls. Do not treat channel names or encoded identifiers as authentication, or assume messages are private or trusted.
