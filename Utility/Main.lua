@@ -76,16 +76,17 @@ local cacheFolder = coreFolder .. "Cache/"
 local wf, rf, mf, IF, df, DF, re = writefile or write_file, readfile or read_file, makefolder or make_folder, isfile or is_file, deletefolder or delfolder or removefolder or delete_folder or del_folder or remove_folder, deletefile or delfile or removefile or delete_file or del_fire or remove_file, request or http_request
 local loadstring, tonumber, game, error, warn, freeze, spawn, pcall, tick, tostring = loadstring or load, tonumber, game, error, warn, table.freeze, task and task.spawn or spawn, pcall, tick, tostring
 local utilityPrefix = "-- This is the main utility loader. Its used for quickly loading without needing to be downloaded\n"
+local pack, remove, unpack, wait = table.pack, table.remove, unpack or table.unpack, task and task.wait or wait
 
 local function httpGet(url, headers, retry)
 	local tries = 0
-	local allowed = tonumber(retry) or 1 / 0
-	retry = retry ~= nil and allowed ~= 1 / 0
+	local allowed = tonumber(retry) or retry == true and 1 / 0 or 1
+	local retry = allowed
 
-	while retry and tries <= allowed do
+	local r, s	
+	while tries <= allowed do
 		tries += 1
 
-		local r, s
 		if re then
 			r = re({ Url = url, Method = "GET", Headers = headers })
 			s = r.Success and r.StatusCode <= 400
@@ -95,9 +96,15 @@ local function httpGet(url, headers, retry)
 		end
 
 		if not retry or s then
-			return r
+			return r, s
+		end
+		
+		if tries < allowed then
+			wait()
 		end
 	end
+
+	return r, s
 end
 
 local expiryTime = 60 * 60 * 4 -- 4 hours
@@ -227,16 +234,9 @@ function downloadModule(name, forceDownload)
 	pcall(updCheck, hash)
 
 	if not forceDownload then local ret = try(moduleName, moduleType, true) if ret then moduleCache[name] = ret return ret end end
-
-	local moduleContents, s = httpGet(url)
-	if not s or moduleContents:gsub("[\n\r\f\t\0 ]", "") == "" or #moduleContents < #utilityPrefix + 5 then
-		local downloaded = downloadModule(name, true)
-		moduleCache[name] = downloaded
-
-		return downloaded
-	end
-
-	if not forceDownload then local ret = try(moduleName, moduleType, false) if ret then moduleCache[name] = ret return ret end end
+	local moduleContents = httpGet(url, nil, true)
+	if not forceDownload then local ret = try(moduleName, moduleType, true) if ret then moduleCache[name] = ret return ret end end
+	
 	local loadTest = loadstring(moduleContents)
 
 	if loadTest then
@@ -250,7 +250,6 @@ function downloadModule(name, forceDownload)
 	end
 end
 
-local pack, remove, unpack, wait = table.pack, table.remove, unpack or table.unpack, task and task.wait or wait
 local function bruteforceLoadModule(name)
 	while true do
 		local success, func = pcall(downloadModule, name)
@@ -258,7 +257,7 @@ local function bruteforceLoadModule(name)
 			return func
 		end
 
-		warn("Download failed:", func)
+		warn("Download of", name, "failed:", func)
 		wait()
 	end
 end
@@ -296,13 +295,13 @@ local util = setmetatable({
 	end,
 	HttpPost = function(self, url, body, headers, retry)
 		local tries = 0
-		local allowed = tonumber(retry) or 1 / 0
-		retry = retry ~= nil and allowed ~= 1 / 0
+		local allowed = tonumber(retry) or retry == true and 1 / 0 or 1
+		local retry = allowed
 
-		while retry and tries <= allowed do
+		local r, s	
+		while tries <= allowed do
 			tries += 1
-			
-			local r, s
+
 			if re then
 				r = re({ Url = url, Method = "POST", Body = body, Headers = headers })
 				s = r.Success and r.StatusCode <= 400
@@ -310,11 +309,17 @@ local util = setmetatable({
 			else
 				s, r = pcall(game.HttpPost, game, url, body, headers)
 			end
-			
+
 			if not retry or s then
-				return r
+				return r, s
+			end
+
+			if tries < allowed then
+				wait()
 			end
 		end
+
+		return r, s
 	end
 }, freeze({
 	__index = function(self, name)
