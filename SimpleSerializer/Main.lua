@@ -490,7 +490,7 @@ return {
 		return e
 	end,
 	deserialize = function(data)
-		if typeof(data) ~= "string" then error(typeError, 0) end
+		if typeof(data) ~= "string" and typeof(data) ~= "buffer" then error(typeError, 0) end
 		
 		local s, e = pcall(decoders.readNext, decoders, DataStream.new(data))
 		if not s then error(malformedDataError, 0) end
