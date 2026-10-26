@@ -223,8 +223,10 @@ end
 
 local moduleCache = { }
 function downloadModule(name, forceDownload)
-	local cached = moduleCache[name]
-	if cached then return cached end
+	if not forceDownload then
+		local cached = moduleCache[name]
+		if cached then return cached end
+	end
 
 	local moduleName, moduleType = getModuleInfo(name)
 	local url = getUrl(moduleName, moduleType)
@@ -239,7 +241,7 @@ function downloadModule(name, forceDownload)
 	local loadTest = loadstring(moduleContents)
 
 	if loadTest then
-		pcall(wf, utilsFolder .. hash .. ext, "-- " .. moduleName .. "\n" .. moduleContents)
+		pcall(wf, utilsFolder .. hash .. ext, "-- " .. moduleName .. ext .."\n" .. moduleContents)
 		pcall(wf, cacheFolder .. hash, tostring(tick()))
 
 		moduleCache[name] = loadTest
@@ -256,7 +258,7 @@ local function bruteforceLoadModule(name)
 			return func
 		end
 
-		warn("Download of", name, "failed:", func)
+		warn("Downloading", name, "failed:", func)
 		wait()
 	end
 end
