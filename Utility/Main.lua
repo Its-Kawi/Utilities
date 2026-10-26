@@ -9,6 +9,7 @@ local utils = {
 	Fire = "Util",
 	EditableCursor = "Util",
 	KeyEnums = "Util",
+	SimpleSerializer = "Util",
 
 	Desync = "Url",
 	UI = "Url",
@@ -54,10 +55,11 @@ local nfPaths = {
 local shortcuts = {
 	ESP = "ESPLib",
 	Cursor = "EditableCursor",
-	Keys = "KeyEnums"
+	Keys = "KeyEnums",
+	SS = "SimpleSerializer"
 }
 
-local preload = { "Event", "Physics", "Desync", "Typer", "Other", "Fire", "KeyEnums" }
+local preload = { "Event", "Physics", "Desync", "Typer", "Other", "Fire", "KeyEnums", "SimpleSerializer" }
 
 local global = getgenv and getgenv() or _G
 local globalKey = "QKUtil"
@@ -119,7 +121,7 @@ local function httpGet(url, headers, retry)
 end
 
 local expiryTime = 60 * 60 * 4 -- 4 hours
-if wf and rf and mf and df and IF and DF then
+if wf and rf and mf and df and IF and DF and lf and If then
 	local isf = IF(utilVerCheckFile)
 	if isf and tick() - tonumber(rf(utilVerCheckFile)) > expiryTime then
 		local self, s = httpGet(subUrls.Util .. "Utility/Main" .. ext)
@@ -128,7 +130,7 @@ if wf and rf and mf and df and IF and DF then
 
 			if loadTest then
 				pcall(recurviseDelete, coreFolder:sub(1, -2))
-				pcall(DF, "FireLibrary/Library" .. ext) -- force UI library to update
+				pcall(recurviseDelete, "FireLibrary/Library" .. ext) -- force UI library to update
 
 				pcall(mf, coreFolder:sub(1, -2))
 				pcall(mf, utilsFolder:sub(1, -2))
@@ -223,8 +225,8 @@ local function updCheck(hash)
 	if IF(extFile) then
 		local n = tonumber(rf(extFile))
 		if n and n > expiryTime then
-			recurviseDelete(extFile)
-			recurviseDelete(utilsFolder .. hash .. ext)
+			pcall(recurviseDelete, extFile)
+			pcall(recurviseDelete, utilsFolder .. hash .. ext)
 		end
 	end
 end
