@@ -1,4 +1,3 @@
--- This is the main utility loader. Its used for quickly loading without needing to be downloaded
 local GITHUB = "https://raw.githubusercontent.com/Its-Kawi/"
 local utils = {
 	Data = "Util",
