@@ -77,7 +77,7 @@ SimpleSerializer supports the following types:
 | `string` | Yes |
 | `number` | Yes, including infinities and NaN |
 | `boolean` | Yes |
-| `nil` | Yes, as an encoded value |
+| `nil` | Yes |
 | `table` | Yes, including lists and dictionaries |
 | `buffer` | Yes |
 | `Color3` | Yes |
@@ -92,7 +92,7 @@ Unsupported Roblox types and other values without an encoder are not serialized 
 
 ## SimpleSerializer vs JSON
 
-Unlike Roblox's `HttpService:JSONEncode()` and `JSONDecode()`, SimpleSerializer is designed to preserve Roblox data types directly.
+Unlike Roblox's `HttpService:JSONEncode()` and `JSONDecode()`, SimpleSerializer is designed to be as small as possible and preserve Roblox data types directly.
 
 | Feature | SimpleSerializer | JSON |
 |---|---|---|
@@ -101,10 +101,10 @@ Unlike Roblox's `HttpService:JSONEncode()` and `JSONDecode()`, SimpleSerializer 
 | Buffers | Supported | Supported, but as a custom table with large data |
 | Booleans and strings | Supported | Supported, but some strings can cause errors |
 | Tables | Lists and dictionaries | Arrays and objects |
-| `nil` | Encoded as a value | Encoded as `null` |
-| Special numbers | Handles NaN and infinities | Supported, but as a custom table with large data |
+| `nil` | Encoded as a byte | Encoded as `null` |
+| Special numbers | Handles NaN and infinities (1 byte) | Supported, but as a custom table with large data |
 | Human-readable | No | Yes |
-| Web/API compatibility | Not intended for JSON APIs | Excellent |
+| Web/API compatibility | Bad | Excellent |
 
 **Use SimpleSerializer** when working with Roblox-specific data and compact serialization.
 
@@ -114,10 +114,8 @@ Unlike Roblox's `HttpService:JSONEncode()` and `JSONDecode()`, SimpleSerializer 
 
 - **Tables cannot be cyclic.** A table that references itself, directly or indirectly, is unsupported.
 - **Dictionary keys should be serializable.** Keys are encoded just like values.
-- **Empty tables** are supported.
-- **Strings and buffers** are escaped where necessary to preserve the encoded data.
 - **Numbers:** Extremely small floating-point values may be serialized as zero, and very large numbers may lose precision or fall back to infinity.
-- **Malformed data:** `deserialize` raises an error if decoding fails. It does not return a separate success flag.
+- **Malformed data:** `deserialize` and `serialize` raising an error, if it fails. It does not return a separate success flag.
 - **Nil values:** Although `nil` can be encoded directly, Lua tables cannot retain entries whose values are `nil`. A top-level serialized `nil` also deserializes to `nil`.
 
 ## Error Handling
