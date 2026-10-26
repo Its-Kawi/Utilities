@@ -21,9 +21,7 @@ local SimpleSerializer = require(path.to.SimpleSerializer)
 You can also load it directly using `loadstring`:
 
 ```lua
-local ss = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/Its-Kawi/Utilities/refs/heads/main/SimpleSerializer/Main.lua"
-))()
+local ss = loadstring(game:HttpGet("https://raw.githubusercontent.com/Its-Kawi/Utilities/refs/heads/main/SimpleSerializer/Main.lua"))()
 ```
 
 This method requires an environment that supports `loadstring` and `game:HttpGet`.
@@ -127,19 +125,12 @@ Unlike Roblox's `HttpService:JSONEncode()` and `JSONDecode()`, SimpleSerializer 
 Use `pcall` if the data may be invalid or unsupported:
 
 ```lua
-local success, result = pcall(function()
-    return ss.deserialize(serialized)
-end)
-
+local success, result = pcall(ss.deserialize, serialized)
 if success then
-    print("Deserialized successfully")
+    print("Deserialized successfully:", result)
 else
     warn("Failed to deserialize:", result)
 end
 ```
 
 The same approach can be used with `serialize`.
-
-## License
-
-Refer to the repository's license for usage and redistribution terms.
