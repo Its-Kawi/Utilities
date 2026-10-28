@@ -40,6 +40,7 @@ Channel properties:
 
 Channel events:
 | Event | Description |
+|---|---|
 | `.OnMessage(data : any, sender : Player?, message : { ... })` | Being fired when a channel recieves a message |
 | `.OnMessageRaw(data : string, sender : Player?, message : { ... })` | Being fired when a channel recieves a raw message |
 | `.MessageReceived(message : { ... })` | Being fired when a channel recieves raw/normal message |
@@ -47,6 +48,7 @@ Channel events:
 
 Channel methods:
 | Method | Description |
+|---|---|
 | `:Disconnect()` | `:Disconnect()` does not delete the remote channel. It disconnects the local listener, stops further message event delivery, and resets the channel's ping value to `-1`. |
 
 ## Sending Messages
