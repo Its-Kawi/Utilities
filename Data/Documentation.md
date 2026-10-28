@@ -28,9 +28,28 @@ local Channel = DataLib.new("MyChannel")
 ```
 
 Each channel provides methods for sending messages and events for receiving them.
+Channel properties:
+| Property | Description |
+|---|---|
+| `.Enabled` | Allows/Disallows channel's listening events to be fired |
+| `.Ping` (read only) | Channel's ping value |
+| `.ChannelName` (read only) | Channel's name ("MyChannel" as in the example) |
+| `.Disconnected` (read only) | True when `:Disconnect()` was called on the channel |
+| `.HTTPMode` (read only) | If channel uses HTTP mode |
+| `.WebSocketMode` (read only) | If channel uses WebSocket mode |
+
+Channel events:
+| Event | Description |
+| `.OnMessage(data : any, sender : Player?, message : { ... })` | Being fired when a channel recieves a message |
+| `.OnMessageRaw(data : string, sender : Player?, message : { ... })` | Being fired when a channel recieves a raw message |
+| `.MessageReceived(message : { ... })` | Being fired when a channel recieves raw/normal message |
+| `.Disconnecting()` | Being fired when `:Disconnect()` been called on a channel |
+
+Channel methods:
+| Method | Description |
+| `:Disconnect()` | `:Disconnect()` does not delete the remote channel. It disconnects the local listener, stops further message event delivery, and resets the channel's ping value to `-1`. |
 
 ## Sending Messages
-
 ### Send structured data
 
 Use `Send()` to send data supported by the library's serializer.
@@ -66,13 +85,12 @@ When no target is specified, the message is sent without a specific recipient re
 
 | Method | Description |
 |---|---|
-| `Send(data, target?)` | Sends structured data through the library's asynchronous wrapper. |
-| `SendAsync(data, target?)` | Retries until the structured message sends successfully. |
-| `SendAsyncUnsafe(data, target?)` | Attempts one structured send without retrying. |
-| `SendRaw(str, target?)` | Sends a raw string through the library's asynchronous wrapper. |
-| `SendRawAsync(str, target?)` | Retries until the raw message sends successfully. |
-| `SendRawAsyncUnsafe(str, target?)` | Attempts one raw send without retrying. |
-| `TrySend(data, target?, isRaw?)` | Attempts one send and returns its success status and elapsed time. |
+| `:Send(data, target?)` | Sends structured data through the library's asynchronous wrapper. |
+| `:SendAsync(data, target?)` | Retries until the structured message sends successfully. |
+| `:SendAsyncUnsafe(data, target?)` | Attempts one structured send without retrying. |
+| `:SendRaw(str, target?)` | Sends a raw string through the library's asynchronous wrapper. |
+| `:SendRawAsync(str, target?)` | Retries until the raw message sends successfully. |
+| `:SendRawAsyncUnsafe(str, target?)` | Attempts one raw send without retrying. |
 
 The retrying asynchronous methods can wait indefinitely if the backend remains unavailable.
 
@@ -166,21 +184,9 @@ A lower polling interval can improve HTTP message responsiveness but increases r
 
 `DataLib.Ping` may reflect the duration of an HTTP polling operation or the timing value calculated when a message is received.
 
-## Channel Properties and Methods
-
-| Member | Description |
-|---|---|
-| `Channel.ChannelName` | Channel name. |
-| `Channel.Enabled` | Enables or suppresses delivery to the channel's message events. |
-| `Channel.Disconnected` | Whether the channel has been disconnected. |
-| `Channel.Ping` | Timing value associated with the latest received message. Starts at `DataLib.Ping`. |
-| `Channel:Disconnect()` | Disconnects the channel's local message listener. |
-
-`Disconnect()` does not delete the remote channel. It disconnects the local listener, stops further message event delivery, and resets the channel's ping value to `-1`.
-
 ## Player Validation
 
-`Validate()` checks whether a Roblox user ID matches an encoded player identifier.
+`DataLib:Validate()` checks whether a Roblox user ID matches an encoded player identifier.
 
 ```lua
 local valid = DataLib:Validate(userId, hash)
