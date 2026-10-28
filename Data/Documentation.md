@@ -45,6 +45,7 @@ Channel events:
 | `.OnMessageRaw(data : string, sender : Player?, message : { ... })` | Being fired when a channel recieves a raw message |
 | `.MessageReceived(message : { ... })` | Being fired when a channel recieves raw/normal message |
 | `.Disconnecting()` | Being fired when `:Disconnect()` been called on a channel |
+Events act like normal Roblox events which use `:Connect():Disconnect()`, `:Once()` and etc.
 
 Channel methods:
 | Method | Description |
