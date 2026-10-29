@@ -8,18 +8,19 @@ local clamp = math.clamp
 local tonumber = tonumber
 
 local tostring = tostring
-local error = error
 local typeof = typeof
 local c3r = Color3.fromRGB
 
 local concat = table.concat
-local find = table.find
 local insert = table.insert
 local unpack = unpack or table.unpack
-local pack = table.pack
 local create = table.create
+local find = table.find
 
 local setmetatable = setmetatable
+local getmetatable = getmetatable
+
+local info = debug.info
 
 local buffer_create = buffer.create
 local buffer_tostring = buffer.tostring
@@ -28,7 +29,11 @@ local buffer_readu8 = buffer.readu8
 local buffer_writeu8 = buffer.writeu8
 local buffer_readstring = buffer.readstring
 
-local maxBit32 = (2 ^ (32 - 1)) - 1
+local warn = warn
+local error = error
+
+local game = game
+
 local maxBit64 = (2 ^ (64 - 1)) - 1
 
 local INF = 1 / 0
@@ -40,49 +45,70 @@ local cyclicError = "tables cannot be cyclic."
 local charError = "Invalid character: "
 local typeError = "Invalid Data argument: string or buffer expected"
 local malformedDataError = "Unable to deserialize data: Malformed data."
+local unknownWarning = "Unknown function"
 
 local types = {
 	--== String ==--
 	String = "\255",
 	TextEnd = "\254",
 	Buffer = "\253",
+	EmptyString = "\1",
+	SingleString = "\2",
+	DoubleString = "\3",
 
 	--== Number ==--
-	Integer = "\1",
-	Float = "\2",
-	Big = "\3",
-	Infinite = "\4",
-	NegativeInteger = "\5",
-	NegativeFloat = "\6",
-	NegativeBig = "\7",
-	NegativeInfinite = "\8",
-	NotANumber = "\9",
-	Zero = "\10",
+	SmallInteger = "\4",
+	MediumInteger = "\5",
+	LargeInteger = "\6",
+	Integer = "\7",
+	Float = "\8",
+	Big = "\9",
+	Infinite = "\10",
+	NegativeSmallInteger = "\11",
+	NegativeMediumInteger = "\12",
+	NegativeLargeInteger = "\13",
+	NegativeInteger = "\14",
+	NegativeFloat = "\15",
+	NegativeBig = "\16",
+	NegativeInfinite = "\17",
+	NotANumber = "\18",
 
 	--== Boolean ==--
-	BooleanTrue = "\11",
-	BooleanFalse = "\12",
+	BooleanTrue = "\19",
+	BooleanFalse = "\20",
 
 	--== Nil ==--
-	None = "\13",
+	None = "\21",
 
 	--== Table ==--
-	List = "\14",
-	Dictionary = "\15",
-	Empty = "\16",
-	TableEnd = "\17",
+	List = "\22",
+	Dictionary = "\23",
+	Empty = "\24",
+	TableEnd = "\25",
+	TableReference = "\26",
 
 	--== Table|Custom ==--
-	Custom = "\18",
-	Color3 = "\19"
+	Custom = "\27",
+	Color3 = "\28",
+	Function = "\29",
+	Content = "\30",
+	Instance = "\31"
 }
 
+local numStart = 32
+local numEnd = 252
+local numRange = numEnd - numStart
+local rangeHalf = floor(numRange / 2)
+for i = numStart, numEnd do
+	types[(i - numStart) - rangeHalf] = char(i)
+end
+
 local function packLength(n1, n2)
-	return (n1 - 1) * 16 + (n2 - 1)
+	return n1 * 16 + n2
 end
 
 local function unpackLength(n)
-	return n / 16 + 1, n % 16 + 1
+	return floor(n / 16), n % 16
 end
 
 local function base256encode(num)
@@ -115,36 +141,133 @@ local function base256decode(encodedStr)
 	return num
 end
 
-local ESC = "\255"
-local TEXT_END = "\254"
-
+local ESC = types.String
+local TEXT_END = types.TextEnd
 local function escapeString(str)
-	return (str:gsub("([\255\254])", ESC .. "%1"))
-end
-
-local function unescapeString(str)
-	return (str:gsub("\255([\255\254])", "%1"))
+	return (str:gsub("([" .. ESC .. TEXT_END .. "])", ESC .. "%1"))
 end
 
 local function getTableType(tbl)
-	local hasAnything = false
+	local count = 0
 
-	local next = 1
 	for key in tbl do
-		hasAnything = true
-
-		if key ~= next then
+		if typeof(key) ~= "number"
+			or key < 1
+			or key % 1 ~= 0 then
 			return 2
 		end
 
-		next += 1
+		count += 1
 	end
 
-	return hasAnything and 1 or 0
+	for i = 1, count do
+		if tbl[i] == nil then
+			return 2
+		end
+	end
+
+	return count == 0 and 0 or 1
 end
+
+local sizes = { "Small", "Medium", "Large" }
+local maxSize = #sizes
+
+local env = getfenv()
+local possibleTables = {
+	--== Roblox LuaU ==--
+	"WebViewParams", "Random", "Ray", "Rect", "Region3",
+	"Region3int16", "RaycastParams", "RotationCurveKey",
+	"task", "table", "TweenInfo", "UDim2", "UDim", "utf8",
+	"User", "Instance", "InstanceHandle", "OverlapParams",
+	"os", "PhysicalProperties", "PathWaypoint", "Path2DControlPoint",
+	"Axes", "string", "SecurityCapabilities", "Secret", --[["shared", ]]
+	"debug", "DateTime", "DockWidgetPluginGuiInfo", "Font", "File",
+	"FloatCurveKey", "Faces", "Color3", "CFrame", "Content",
+	"ColorSequence", "coroutine", "CatalogSearchParams",
+	"ColorSequenceKeypoint", "Vector2", "vector", "Vector3",
+	"Vector2int16", "Vector3int16", "ValueCurveKey",
+	"buffer", "bit32", "bit", "BrickColor", "NumberRange",
+	"NumberSequence", "NumberSequenceKeypoint", "math",
+	--[["_G", ]]
+	
+	--== Exploit LuaU ==--
+	"cache", "crypt", "Drawing", "DrawingImmediate", "oth",
+	"raknet", "Regex", "WebSocket"
+}
+
+local tableByName = { }
+for _, v in possibleTables do
+	tableByName[v] = env[v]
+end
+
+local definedTables = {
+	[_G] = "\4",
+	[shared] = "\1",
+	[getfenv()] = "\2",
+	[(getfenv().getgenv or function() return {} end)()] = "\3"
+}
+
+for i = 1, #possibleTables do
+	local tbl = env[possibleTables[i]]
+	if tbl then
+		definedTables[tbl] = char(i + 5)
+	end
+end
+
+local definedTablesReverse = { }
+
+for key, val in definedTables do
+	definedTablesReverse[val] = key
+end
+
+local function clone(a)
+	local b = { }
+	for i, v in a do
+		b[i] = v
+	end
+	
+	return b
+end
+
+local tableScan; tableScan = function(target, tbl, route, visited)
+	if typeof(tbl) ~= "table" or find(visited, tbl) then
+		return nil
+	end
+
+	insert(visited, tbl)
+	route = clone(route)
+
+	for k, v in tbl do
+		if v == target then
+			insert(route, k)
+			return route
+		elseif typeof(v) == "table" then
+			local r = clone(route)
+			insert(r, k)
+
+			local result = tableScan(target, v, r, visited)
+			if result then
+				return result
+			end
+		end
+	end
+
+	return nil
+end
+
+local csto = Enum.ContentSourceType.Object
+local cstu = Enum.ContentSourceType.Uri
 
 local encoders = {
 	string = function(self, str)
+		if str == "" then
+			return types.EmptyString
+		elseif #str == 1 then
+			return types.SingleString .. str
+		elseif #str == 2 then
+			return types.DoubleString .. str
+		end
+		
 		return types.String .. escapeString(str) .. types.TextEnd
 	end,
 	number = function(self, num)
@@ -160,18 +283,22 @@ local encoders = {
 			return types.NegativeInfinite
 		end
 
-		local absNum = abs(num)
-		local isNegative = num ~= absNum
-
-		if absNum == 0 then
-			return types.Zero
+		local tn = types[num]
+		if tn then
+			return tn
 		end
 
+		local absNum = abs(num)
+		local isNegative = num ~= absNum
 		local isInt = num % 1 == 0
 		if isInt then
-			if absNum < maxBit64 then
-				local n = base256encode(absNum)
-				return (isNegative and types.NegativeInteger or types.Integer) .. base256encode(#n) .. n
+			local n = base256encode(absNum)
+			local nl = #n
+			
+			if nl <= maxSize then
+				return types[(isNegative and "Negative" or "") .. sizes[nl] .. "Integer"] .. n
+			elseif absNum < maxBit64 then
+				return (isNegative and types.NegativeInteger or types.Integer) .. base256encode(nl) .. n
 			else
 				local zeros = -1
 				local current = absNum
@@ -194,7 +321,7 @@ local encoders = {
 			end
 		else
 			if absNum < small then
-				return types.Zero
+				return types[0]
 			elseif absNum < maxBit64 then
 				local str = tostring(absNum)
 				if not str:find(".", 0, true) then
@@ -206,7 +333,7 @@ local encoders = {
 
 				local n1 = base256encode(tonumber(spl[1]))
 				local n2 = base256encode(tonumber(spl[2]:reverse()))
-
+				
 				return (isNegative and types.NegativeFloat or types.Float) .. char(packLength(#n1, #n2)) .. n1 .. n2
 			else
 				return self:number(floor(num))
@@ -220,16 +347,29 @@ local encoders = {
 		return types.None
 	end,
 
-	table = function(self, tbl, isCustom)
-		local tblType = isCustom and 1 or getTableType(tbl)
+	table = function(self, tbl, custom)
+		local d = definedTables[tbl]
+		if not d and getmetatable(tbl) == "The metatable is locked" and tbl.error == error then
+			return types.TableReference .. "\2"
+		end
+		
+		if d then
+			return types.TableReference .. d
+		end
+		
+		local fn = self["function"](self, tbl)
+		if fn ~= types.None then
+			return fn
+		end
+		
+		local tblType = custom and 1 or getTableType(tbl)
 		if tblType == 0 then
 			return types.Empty
 		end
 
-		local chunks = {}
-
-		if isCustom then
-			insert(chunks, types.Custom)
+		local chunks = { }
+		if custom then
+			insert(chunks, custom)
 		elseif tblType == 1 then
 			insert(chunks, types.List)
 		else
@@ -237,8 +377,8 @@ local encoders = {
 		end
 
 		if tblType == 1 then
-			for _, value in tbl do
-				insert(chunks, self:encode(value))
+			for i = 1, #tbl do
+				insert(chunks, self:encode(tbl[i]))
 			end
 		else
 			for key, value in tbl do
@@ -255,7 +395,72 @@ local encoders = {
 	end,
 	
 	Color3 = function(self, c3)
-		return types.Color3 .. base256encode(clamp(floor(c3.R * 255), 0, 255)) .. base256encode(clamp(floor(c3.G * 255), 0, 255)) .. base256encode(clamp(floor(c3.B * 255), 0, 255))
+		return types.Color3 .. char(clamp(floor(c3.R * 255 + 0.5), 0, 255), clamp(floor(c3.G * 255 + 0.5), 0, 255), clamp(floor(c3.B * 255 + 0.5), 0, 255))
+	end,
+	["function"] = function(self, fn)
+		if typeof(fn) == "function" then
+			local fnn = info(fn, "n")
+			if env[fnn] == fn then
+				return self:table({ fnn }, types.Function)
+			end
+		end
+		
+		local visited = { }
+		for tblN, tbl in tableByName do
+			if typeof(tbl) == "table" then
+				local foundRoute = tableScan(fn, tbl, {tblN}, visited)
+
+				if foundRoute then
+					return self:table(foundRoute, types.Function)
+				end
+			end
+		end
+
+		for tblN, tbl in definedTablesReverse["\3"] do
+			if typeof(tbl) == "table" then
+				local foundRoute = tableScan(fn, tbl, { tblN }, visited)
+				
+				if foundRoute then
+					return self:table(foundRoute, types.Function)
+				end
+			end
+		end
+		
+		return types.None
+	end,
+	Instance = function(self, instance)
+		if instance == game then
+			return types.Instance
+		elseif not instance:IsDescendantOf(game) then
+			return types.None
+		end
+
+		local path = { }
+		local current = instance
+
+		while current ~= game do
+			local next = current.Parent
+			local isService = false
+
+			if next == game then
+				local s, serv = pcall(game.GetService, game, current.ClassName)
+				if serv == current then
+					isService = true
+				end
+			end
+
+			insert(path, 1, isService and current.ClassName or current.Name)
+			current = next
+		end
+
+		return self:table(path, types.Instance)
+	end,
+	Content = function(self, content)
+		if content.SourceType == cstu then
+			return types.Content .. base256encode(2) .. self:encode(content.Uri)
+		end
+		
+		return types.Content .. base256encode(1)
 	end,
 
 	encode = function(self, val)
@@ -265,31 +470,40 @@ local encoders = {
 	--== CUSTOM ==--
 
 	CFrame = function(self, cframe)
-		return self:table({ "\0", cframe:GetComponents() }, true)
+		return self:table({ "\0", cframe:GetComponents() }, types.Custom)
 	end,
 	Vector2 = function(self, v2)
-		return self:table({ "\1", v2.X, v2.Y }, true)
+		return self:table({ "\1", v2.X, v2.Y }, types.Custom)
 	end,
 	Vector3 = function(self, v3)
-		return self:table({ "\2", v3.X, v3.Y, v3.Z }, true)
+		return self:table({ "\2", v3.X, v3.Y, v3.Z }, types.Custom)
 	end,
 	UDim2 = function(self, udim2)
-		return self:table({ "\3", udim2.X.Scale, udim2.X.Offset, udim2.Y.Scale, udim2.Y.Offset }, true)
+		return self:table({ "\3", udim2.X.Scale, udim2.X.Offset, udim2.Y.Scale, udim2.Y.Offset }, types.Custom)
 	end,
 	UDim = function(self, udim)
-		return self:table({ "\4", udim.Scale, udim.Offset }, true)
+		return self:table({ "\4", udim.Scale, udim.Offset }, types.Custom)
 	end,
 	ColorSequence = function(self, sequence)
-		return self:table({ "\5", unpack(sequence.Keypoints) }, true)
+		return self:table({ "\5", unpack(sequence.Keypoints) }, types.Custom)
 	end,
 	ColorSequenceKeypoint = function(self, sequence)
-		return self:table({ "\6", sequence.Time, sequence.Value }, true)
+		return self:table({ "\6", sequence.Time, sequence.Value }, types.Custom)
 	end,
 	Vector3int16 = function(self, v3)
-		return self:table({ "\7", v3.X, v3.Y, v3.Z }, true)
+		return self:table({ "\7", v3.X, v3.Y, v3.Z }, types.Custom)
 	end,
 	Vector2int16 = function(self, v2)
-		return self:table({ "\8", v2.X, v2.Y }, true)
+		return self:table({ "\8", v2.X, v2.Y }, types.Custom)
+	end,
+	Enums = function(self, enums)
+		return self:table({ "Enum" }, types.Function)
+	end,
+	Enum = function(self, enum)
+		return self:table({ "Enum", tostring(enum) }, types.Function)
+	end,
+	EnumItem = function(self, enumItem)
+		return self:table({ "Enum", tostring(enumItem.EnumType), enumItem.Name }, types.Function)
 	end
 }
 
@@ -302,7 +516,7 @@ local customDescriptors = {
 	["\5"] = ColorSequence.new,
 	["\6"] = ColorSequenceKeypoint.new,
 	["\7"] = Vector3int16.new,
-	["\8"] = Vector2int16.new
+	["\8"] = Vector2int16.new,
 }
 
 local DataStream do
@@ -333,19 +547,7 @@ local DataStream do
 	end
 
 	function DSF:readChar()
-		return char(self:readByte())
-	end
-
-	function DSF:readBytes(amount)
-		local bytes = create(amount)
-		local buffer = self.buffer
-		local cursor = self.cursor
-
-		for i = 1, amount do
-			bytes[i] = buffer_readu8(buffer, cursor + i - 1)
-		end
-		
-		return bytes, self:move(amount)
+		return char((self:readByte()))
 	end
 
 	function DSF:readChars(amount)
@@ -356,7 +558,23 @@ end
 local textEnd = types.TextEnd
 local tableEnd = types.TableEnd
 
+local function index(a, b)
+	return a[b]
+end
+
+local content_none = Content.none
+local content_fromUri = Content.fromUri
+
 local decoders; decoders = {
+	[types.EmptyString] = function(self, stream)
+		return ""
+	end,
+	[types.SingleString] = function(self, stream)
+		return stream:readChars(1)
+	end,
+	[types.DoubleString] = function(self, stream)
+		return stream:readChars(2)
+	end,
 	[types.String] = function(self, stream)
 		local str = { }
 		local isEscape = false
@@ -387,9 +605,15 @@ local decoders; decoders = {
 	[types.Buffer] = function(self, stream)
 		return buffer_fromstring(self[types.String](self, stream))
 	end,
-
+	
+	[types.SmallInteger] = function(self, stream)
+		return stream:readByte()
+	end,
 	[types.Integer] = function(self, stream)
 		return base256decode(stream:readChars(stream:readByte()))
+	end,
+	[types.NegativeSmallInteger] = function(self, stream)
+		return -stream:readByte()
 	end,
 	[types.NegativeInteger] = function(self, stream)
 		return -base256decode(stream:readChars(stream:readByte()))
@@ -416,9 +640,6 @@ local decoders; decoders = {
 	end,
 	[types.NotANumber] = function(self, stream)
 		return NaN
-	end,
-	[types.Zero] = function(self, stream)
-		return 0
 	end,
 	
 	[types.BooleanTrue] = function(self, stream)
@@ -458,19 +679,92 @@ local decoders; decoders = {
 	[types.Empty] = function(self, stream)
 		return { }
 	end,
+	[types.TableReference] = function(self, stream)
+		return definedTablesReverse[stream:readChar()] or { }
+	end,
 	
 	[types.Custom] = function(self, stream)
 		local list = self[types.List](self, stream)
 		return customDescriptors[list[1]](unpack(list, 2))
 	end,
+	
 	[types.Color3] = function(self, stream)
-		return c3r(stream:readByte(), stream:readByte(), stream:readByte())
+		return c3r((stream:readByte()), (stream:readByte()), (stream:readByte()))
+	end,
+
+	[types.Function] = function(self, stream)
+		local route = self[types.List](self, stream)
+		local current = env
+		local routeEnd = #route
+
+		for i = 1, routeEnd do
+			local v = route[i]
+			local s, c = pcall(index, current, route[i])
+			if s then
+				current = current[route[i]]
+
+				if not current then
+					return nil
+				end
+			else
+				return nil
+			end
+		end
+
+		return current
+	end,
+	[types.Instance] = function(self, stream)
+		local s, nextChar = pcall(stream.readChar, stream)
+		if s then
+			stream:move(-1)
+		else
+			nextChar = ""
+		end
+		
+		if nextChar == types.String then
+			local route = self[types.List](self, stream)
+			local current = game
+			
+			for i = 1, #route do
+				local v = route[i]
+				if i == 1 then
+					local s, serv = pcall(current.GetService, current, v)
+					if not s then
+						serv = current:FindFirstChild(v)
+					end
+					
+					if not serv then
+						return nil
+					end
+					
+					current = serv
+				else
+					current = current:FindFirstChild(v)
+					
+					if not current then
+						return nil
+					end
+				end
+			end
+			
+			return current
+		else
+			return game
+		end
+	end,
+	[types.Content] = function(self, stream)
+		local type = stream:readByte()
+		if type == 1 then
+			return content_none
+		else
+			return content_fromUri(self:readNext(stream))
+		end
 	end,
 	
 	readNext = function(self, stream)
 		local char = stream:readChar()
 		local decoder = decoders[char]
-		if decoder then
+		if typeof(decoder) == "function" then
 			return (decoder(self, stream))
 		else
 			if char == tableEnd then
@@ -481,6 +775,22 @@ local decoders; decoders = {
 		end
 	end
 }
+
+for i = numStart, numEnd do
+	decoders[char(i)] = function(self, stream)
+		return (i - numStart) - rangeHalf
+	end
+end
+
+for i, v in sizes do
+	decoders[types["Negative" .. v .. "Integer"]] = function(self, stream)
+		return -base256decode(stream:readChars(i))
+	end
+	
+	decoders[types[v .. "Integer"]] = function(self, stream)
+		return base256decode(stream:readChars(i))
+	end
+end
 
 return {
 	serialize = function(data)
