@@ -80,14 +80,13 @@ local utilityPrefix = "-- This is the main utility loader. Its used for quickly 
 local pack, remove, unpack, wait = table.pack, table.remove, unpack or table.unpack, task and task.wait or wait
 
 local recurviseDelete; function recurviseDelete(name)
+	pcall(df, name)
+	pcall(DF, name)
+	
 	if If(name) then
 		for _, v in lf(name) do
 			recurviseDelete(v)
 		end
-		
-		pcall(df, name)
-	elseif IF(name) then
-		pcall(DF, name)
 	end
 end
 
@@ -131,10 +130,11 @@ if wf and rf and mf and df and IF and DF and lf and If then
 			if loadTest then
 				pcall(recurviseDelete, coreFolder:sub(1, -2))
 				pcall(recurviseDelete, "FireLibrary/Library" .. ext) -- force UI library to update
+				
+				while If(coreFolder:sub(1, -2)) or IF("FireLibrary/Library" .. ext) do
+					wait()
+				end
 
-				pcall(mf, coreFolder:sub(1, -2))
-				pcall(mf, utilsFolder:sub(1, -2))
-				pcall(mf, cacheFolder:sub(1, -2))
 				pcall(wf, utilFile, utilityPrefix .. self)
 				pcall(wf, utilVerCheckFile, tostring(tick()))
 
