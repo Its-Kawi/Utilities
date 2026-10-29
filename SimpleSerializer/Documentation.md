@@ -78,7 +78,7 @@ SimpleSerializer supports the following types:
 | `number` | Yes, including infinities and NaN |
 | `boolean` | Yes |
 | `nil` | Yes |
-| `table` | Yes, including lists and dictionaries |
+| `table` | Yes, including lists and dictionaries & some environmental values |
 | `buffer` | Yes |
 | `Color3` | Yes |
 | `CFrame` | Yes |
@@ -87,6 +87,11 @@ SimpleSerializer supports the following types:
 | `UDim`, `UDim2` | Yes |
 | `ColorSequence` | Yes |
 | `ColorSequenceKeypoint` | Yes |
+| `Function` | Only if defined in the given environment |
+| `Enum` | Full Enum support |
+| `Content` | Only Uri |
+| `Instance` | Yes, only if present in the DataModel |
+| `...` | Much more |
 
 Unsupported Roblox types and other values without an encoder are not serialized correctly and may result in errors.
 
