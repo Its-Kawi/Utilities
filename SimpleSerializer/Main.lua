@@ -14,7 +14,6 @@ local c3r = Color3.fromRGB
 local concat = table.concat
 local insert = table.insert
 local unpack = unpack or table.unpack
-local create = table.create
 local find = table.find
 
 local setmetatable = setmetatable
@@ -29,10 +28,14 @@ local buffer_readu8 = buffer.readu8
 local buffer_writeu8 = buffer.writeu8
 local buffer_readstring = buffer.readstring
 
-local warn = warn
 local error = error
 
 local game = game
+
+local cstu = Enum.ContentSourceType.Uri
+
+local content_none = Content.none
+local content_fromUri = Content.fromUri
 
 local maxBit64 = (2 ^ (64 - 1)) - 1
 
@@ -109,6 +112,10 @@ end
 
 local function unpackLength(n)
 	return floor(n / 16), n % 16
+end
+
+local function index(a, b)
+	return a[b]
 end
 
 local function base256encode(num)
@@ -255,9 +262,6 @@ local tableScan; tableScan = function(target, tbl, route, visited)
 	return nil
 end
 
-local csto = Enum.ContentSourceType.Object
-local cstu = Enum.ContentSourceType.Uri
-
 local encoders = {
 	string = function(self, str)
 		if str == "" then
@@ -347,19 +351,21 @@ local encoders = {
 		return types.None
 	end,
 
-	table = function(self, tbl, custom)
-		local d = definedTables[tbl]
-		if not d and getmetatable(tbl) == "The metatable is locked" and tbl.error == error then
-			return types.TableReference .. "\2"
-		end
-		
-		if d then
-			return types.TableReference .. d
-		end
-		
-		local fn = self["function"](self, tbl)
-		if fn ~= types.None then
-			return fn
+	table = function(self, tbl, custom, globalSearch)
+		if globalSearch then
+			local d = definedTables[tbl]
+			if not d and getmetatable(tbl) == "The metatable is locked" and tbl.error == error then
+				return types.TableReference .. "\2"
+			end
+			
+			if d then
+				return types.TableReference .. d
+			end
+			
+			local fn = self["function"](self, tbl)
+			if fn ~= types.None then
+				return fn
+			end
 		end
 		
 		local tblType = custom and 1 or getTableType(tbl)
@@ -401,7 +407,7 @@ local encoders = {
 		if typeof(fn) == "function" then
 			local fnn = info(fn, "n")
 			if env[fnn] == fn then
-				return self:table({ fnn }, types.Function)
+				return self:table({ fnn }, types.Function, false)
 			end
 		end
 		
@@ -411,7 +417,7 @@ local encoders = {
 				local foundRoute = tableScan(fn, tbl, {tblN}, visited)
 
 				if foundRoute then
-					return self:table(foundRoute, types.Function)
+					return self:table(foundRoute, types.Function, false)
 				end
 			end
 		end
@@ -421,7 +427,7 @@ local encoders = {
 				local foundRoute = tableScan(fn, tbl, { tblN }, visited)
 				
 				if foundRoute then
-					return self:table(foundRoute, types.Function)
+					return self:table(foundRoute, types.Function, false)
 				end
 			end
 		end
@@ -453,7 +459,7 @@ local encoders = {
 			current = next
 		end
 
-		return self:table(path, types.Instance)
+		return self:table(path, types.Instance, false)
 	end,
 	Content = function(self, content)
 		if content.SourceType == cstu then
@@ -464,46 +470,46 @@ local encoders = {
 	end,
 
 	encode = function(self, val)
-		return (self[typeof(val)] or self["nil"])(self, val)
+		return (self[typeof(val)] or self["nil"])(self, val, nil, true)
 	end,
 	
 	--== CUSTOM ==--
 
 	CFrame = function(self, cframe)
-		return self:table({ "\0", cframe:GetComponents() }, types.Custom)
+		return self:table({ "\0", cframe:GetComponents() }, types.Custom, false)
 	end,
 	Vector2 = function(self, v2)
-		return self:table({ "\1", v2.X, v2.Y }, types.Custom)
+		return self:table({ "\1", v2.X, v2.Y }, types.Custom, false)
 	end,
 	Vector3 = function(self, v3)
-		return self:table({ "\2", v3.X, v3.Y, v3.Z }, types.Custom)
+		return self:table({ "\2", v3.X, v3.Y, v3.Z }, types.Custom, false)
 	end,
 	UDim2 = function(self, udim2)
-		return self:table({ "\3", udim2.X.Scale, udim2.X.Offset, udim2.Y.Scale, udim2.Y.Offset }, types.Custom)
+		return self:table({ "\3", udim2.X.Scale, udim2.X.Offset, udim2.Y.Scale, udim2.Y.Offset }, types.Custom, false)
 	end,
 	UDim = function(self, udim)
-		return self:table({ "\4", udim.Scale, udim.Offset }, types.Custom)
+		return self:table({ "\4", udim.Scale, udim.Offset }, types.Custom, false)
 	end,
 	ColorSequence = function(self, sequence)
-		return self:table({ "\5", unpack(sequence.Keypoints) }, types.Custom)
+		return self:table({ "\5", unpack(sequence.Keypoints) }, types.Custom, false)
 	end,
 	ColorSequenceKeypoint = function(self, sequence)
-		return self:table({ "\6", sequence.Time, sequence.Value }, types.Custom)
+		return self:table({ "\6", sequence.Time, sequence.Value }, types.Custom, false)
 	end,
 	Vector3int16 = function(self, v3)
-		return self:table({ "\7", v3.X, v3.Y, v3.Z }, types.Custom)
+		return self:table({ "\7", v3.X, v3.Y, v3.Z }, types.Custom, false)
 	end,
 	Vector2int16 = function(self, v2)
-		return self:table({ "\8", v2.X, v2.Y }, types.Custom)
+		return self:table({ "\8", v2.X, v2.Y }, types.Custom, false)
 	end,
 	Enums = function(self, enums)
-		return self:table({ "Enum" }, types.Function)
+		return self:table({ "Enum" }, types.Function, false)
 	end,
 	Enum = function(self, enum)
-		return self:table({ "Enum", tostring(enum) }, types.Function)
+		return self:table({ "Enum", tostring(enum) }, types.Function, false)
 	end,
 	EnumItem = function(self, enumItem)
-		return self:table({ "Enum", tostring(enumItem.EnumType), enumItem.Name }, types.Function)
+		return self:table({ "Enum", tostring(enumItem.EnumType), enumItem.Name }, types.Function, false)
 	end
 }
 
@@ -557,13 +563,6 @@ end
 
 local textEnd = types.TextEnd
 local tableEnd = types.TableEnd
-
-local function index(a, b)
-	return a[b]
-end
-
-local content_none = Content.none
-local content_fromUri = Content.fromUri
 
 local decoders; decoders = {
 	[types.EmptyString] = function(self, stream)
