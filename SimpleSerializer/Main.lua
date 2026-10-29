@@ -803,8 +803,9 @@ return {
 	deserialize = function(data)
 		if typeof(data) ~= "string" and typeof(data) ~= "buffer" then error(typeError, 0) end
 		
-		local s, e = pcall(decoders.readNext, decoders, DataStream.new(data))
-		if not s then error(malformedDataError, 0) end
+		local stream = DataStream.new(data)
+		local s, e = pcall(decoders.readNext, decoders, stream)
+		if not s or pcall(decoders.readNext, decoders, stream) then error(malformedDataError, 0) end
 
 		return e
 	end
