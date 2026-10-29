@@ -283,7 +283,7 @@ Roblox also provides JSON support through `HttpService:JSONEncode()` and `HttpSe
 | --- | --- | --- |
 | Output | Compact encoded string | Human-readable text |
 | Roblox-specific datatypes | Supports several types directly | Usually requires conversion to JSON-compatible values |
-| Buffers | Supported by the serializer | Requires conversion to a JSON-compatible representation |
+| Buffers | Supported by the serializer | Produces large output, because of base64 encoding |
 | Web API compatibility | Not intended as a standard interchange format | Widely supported |
 | Readability | Not designed for manual editing | Readable and easy to inspect |
 | Error handling | May raise errors for unsupported or malformed data | May raise errors for unsupported values or malformed JSON |
