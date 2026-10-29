@@ -31,6 +31,11 @@ local SimpleSerializer = require(path.to.SimpleSerializer)
 
 Replace `path.to.SimpleSerializer` with the actual location of your ModuleScript.
 
+Or in exploit environments you can load it from the github directly:
+```lua
+local SimpleSerializer = loadstring(game:HttpGet("https://raw.githubusercontent.com/Its-Kawi/Utilities/refs/heads/main/SimpleSerializer/Main.lua"))()
+```
+
 ## Basic usage
 
 The module exposes two main functions: `serialize` and `deserialize`.
