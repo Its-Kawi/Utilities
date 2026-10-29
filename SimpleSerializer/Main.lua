@@ -199,7 +199,9 @@ local possibleTables = {
 	
 	--== Exploit LuaU ==--
 	"cache", "crypt", "Drawing", "DrawingImmediate", "oth",
-	"raknet", "Regex", "WebSocket"
+	"raknet", "Regex", "WebSocket",
+	
+	"syn"
 }
 
 local tableByName = { }
