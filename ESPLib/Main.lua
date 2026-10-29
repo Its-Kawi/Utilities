@@ -641,6 +641,8 @@ refresh = function(self, pos, vec)
 	local line = self.Line
 
 	if not obj then return destroy(self) end
+	
+	obj = settings.Adornee or obj
 
 	pos = pos or getPosition(obj)
 	vec = vec or getVector2(pos)
