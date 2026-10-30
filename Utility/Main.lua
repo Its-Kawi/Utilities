@@ -199,12 +199,17 @@ local function getUrl(moduleName, moduleType)
 	return moduleType == "Download" and moduleName or moduleType == "Url" and urls[moduleName] or moduleType == "NF" and (nfPaths[moduleName]:sub(1, 9) == "Libraries" and GITHUB .. "Null-Fire/refs/heads/main/Core/" or GITHUB .. "Null-Fire/refs/heads/main/Core/Loaders/") .. nfPaths[moduleName] .. (nfPaths[moduleName]:sub(1, 9) == "Libraries" and "/Main" or "") .. ext or subUrls[moduleType] .. moduleName .. "/Main" .. ext
 end
 
+local moduleCache = { }
 local function try(moduleName, moduleType, doUpdate)
 	local url = getUrl(moduleName, moduleType)
 	local filePath = utilsFolder .. hash(url) .. ext
 
 	if IF and IF(filePath) then
-		return loadstring(rf(filePath))
+		local fn = loadstring(rf(filePath))
+		if fn then
+			moduleCache[moduleName] = fn
+			return fn
+		end
 	end
 
 	local gkey = utilGlobalKeys[moduleName]
@@ -215,7 +220,9 @@ local function try(moduleName, moduleType, doUpdate)
 				spawn(downloadModule, moduleName, true)
 			end
 
-			return function() return found end
+			local fn = function() return found end
+			moduleCache[moduleName] = fn
+			return fn
 		end
 	end
 end
@@ -231,7 +238,6 @@ local function updCheck(hash)
 	end
 end
 
-local moduleCache = { }
 function downloadModule(name, forceDownload)
 	local moduleName, moduleType = getModuleInfo(name)
 	if not forceDownload then
@@ -252,6 +258,9 @@ function downloadModule(name, forceDownload)
 	if loadTest then
 		pcall(wf, utilsFolder .. hash .. ext, "-- " .. moduleName .. ext .."\n" .. moduleContents)
 		pcall(wf, cacheFolder .. hash, tostring(tick()))
+		
+		local cached = moduleCache[moduleName]
+		if cached then return cached end
 
 		moduleCache[moduleName] = loadTest
 		return loadTest
