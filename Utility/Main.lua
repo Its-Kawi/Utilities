@@ -270,6 +270,8 @@ function downloadModule(name, forceDownload)
 end
 
 local function bruteforceLoadModule(name)
+	if typeof(name) ~= "string" then return end
+	
 	while true do
 		local success, func = pcall(downloadModule, name)
 		if success then
@@ -278,6 +280,10 @@ local function bruteforceLoadModule(name)
 
 		warn("Downloading", name, "failed:", func)
 		wait()
+		
+		if func:find("not found") then
+			return function() return warn(func) end
+		end
 	end
 end
 
