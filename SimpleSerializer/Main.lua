@@ -238,8 +238,9 @@ local function clone(a)
 	return b
 end
 
-local tableScan; tableScan = function(target, tbl, route, visited)
-	if typeof(tbl) ~= "table" or find(visited, tbl) then
+local tableScan; tableScan = function(target, tbl, route, visited, depth)
+	depth = depth or 1
+	if typeof(tbl) ~= "table" or find(visited, tbl) or depth > 3 then
 		return nil
 	end
 
@@ -254,7 +255,7 @@ local tableScan; tableScan = function(target, tbl, route, visited)
 			local r = clone(route)
 			insert(r, k)
 
-			local result = tableScan(target, v, r, visited)
+			local result = tableScan(target, v, r, visited, depth + 1)
 			if result then
 				return result
 			end
@@ -413,7 +414,7 @@ local encoders = {
 			end
 		end
 		
-		local visited = { }
+		--[[local visited = { }
 		for tblN, tbl in tableByName do
 			if typeof(tbl) == "table" then
 				local foundRoute = tableScan(fn, tbl, {tblN}, visited)
@@ -432,7 +433,7 @@ local encoders = {
 					return self:table(foundRoute, types.Function, false)
 				end
 			end
-		end
+		end]]
 		
 		return types.None
 	end,
