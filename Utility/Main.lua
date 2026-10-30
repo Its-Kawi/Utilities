@@ -288,17 +288,19 @@ end
 
 freeze(modules)
 
-local defer = task.defer
 local find = table.find
-
 spawn(function()
-	for i, module in modules do
+	local function cacheModule(module)
 		pcall(downloadModule, module, true)
 		local s, f = pcall(bruteforceLoadModule, module)
 
 		if s and find(preload, module) then
 			pcall(f)
 		end
+	end
+	
+	for i, module in modules do
+		spawn(cacheModule, module)
 	end
 end)
 
