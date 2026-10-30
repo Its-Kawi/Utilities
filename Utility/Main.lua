@@ -233,28 +233,27 @@ end
 
 local moduleCache = { }
 function downloadModule(name, forceDownload)
+	local moduleName, moduleType = getModuleInfo(name)
 	if not forceDownload then
-		local cached = moduleCache[name]
+		local cached = moduleCache[moduleName]
 		if cached then return cached end
 	end
 
-	local moduleName, moduleType = getModuleInfo(name)
 	local url = getUrl(moduleName, moduleType)
-
 	local hash = hash(url)
+	
 	pcall(updCheck, hash)
 
-	if not forceDownload then local ret = try(moduleName, moduleType, true) if ret then moduleCache[name] = ret return ret end end
+	if not forceDownload then local ret = try(moduleName, moduleType, true) if ret then moduleCache[moduleName] = ret return ret end end
 	local moduleContents = httpGet(url, nil, true)
-	if not forceDownload then local ret = try(moduleName, moduleType, true) if ret then moduleCache[name] = ret return ret end end
+	if not forceDownload then local ret = try(moduleName, moduleType, true) if ret then moduleCache[moduleName] = ret return ret end end
 	
 	local loadTest = loadstring(moduleContents)
-
 	if loadTest then
 		pcall(wf, utilsFolder .. hash .. ext, "-- " .. moduleName .. ext .."\n" .. moduleContents)
 		pcall(wf, cacheFolder .. hash, tostring(tick()))
 
-		moduleCache[name] = loadTest
+		moduleCache[moduleName] = loadTest
 		return loadTest
 	else
 		error("Module failed to load: " .. moduleContents, 0)
