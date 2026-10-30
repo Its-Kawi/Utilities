@@ -312,485 +312,489 @@ local modules do
 	modules[objects["Instance0"]] = function(...)
 		local script = objects["Instance0"];
 		local ESPObj = script.ESPObject
-local getfenv = getfenv
-local env = getfenv()
-env = env.getgenv and env.getgenv() or env
+		local getfenv = getfenv
+		local env = getfenv()
+		env = env.getgenv and env.getgenv() or env
 
-local global = env.getgenv and env.getgenv() or _G
-local n = "FESPLib"
+		local global = env.getgenv and env.getgenv() or _G
+		local n = "FESPLib"
 
-local v = global[n]
-if v then
-	ESPObj:Destroy()
-	script:Destroy()
+		local v = global[n]
+		if v then
+			ESPObj:Destroy()
+			script:Destroy()
 
-	return v
-end
-
-script.Parent, ESPObj.Parent = nil, nil
-
-local inew = Instance.new
-local workspace, game = workspace, game
-
-local holder = inew("Folder", game:GetService("CoreGui") or workspace)
-holder.Name = "ESPLib"
-
-local event = require(script.Event)
-local ESPs = { }
-
-local rawset, rawget = rawset, rawget
-local setmetatable = setmetatable
-local tick = tick
-local v2 = Vector2.new
-local hsv = Color3.fromHSV
-local c3n = Color3.new
-local typeof = typeof
-local concat = table.concat
-local pack, unpack = table.pack, table.unpack
-local pcall = pcall
-local u2 = UDim2.new
-local v3 = Vector3.new
-local round = math.round
-local clamp = math.clamp
-
-local plr = game:GetService("Players").LocalPlayer
-local mouse = plr:GetMouse()
-
-local drawing = env.Drawing or env.drawing
-local fromPoint = v2(0, 0)
-local maxX, maxY = 0, 0
-
-local guiServ = game:GetService("GuiService")
-local opened = guiServ.MenuIsOpen
-
-guiServ.MenuOpened:Connect(function()
-	opened = true
-end)
-
-guiServ.MenuClosed:Connect(function()
-	opened = false
-end)
-
-local function memoize(fn)
-	--[[local cache = setmetatable({ }, { __mode = "k" })
-
-	return function(...)
-		local args = pack(...)
-		local key = args.n ~= 0 and concat(args, "\0") or ""
-
-		local result = cache[key]
-		if result then
-			return unpack(result, 1, result.n)
+			return v
 		end
 
-		result = pack(fn(...))
-		cache[key] = result
+		script.Parent, ESPObj.Parent = nil, nil
 
-		return unpack(result, 1, result.n)
-	end]]
-	
-	return fn
-end
+		local inew = Instance.new
+		local workspace, game = workspace, game
 
-local deg, atan2 = memoize(math.deg), memoize(math.atan2)
+		local holder = inew("Folder", game:GetService("CoreGui") or workspace)
+		holder.Name = "ESPLib"
 
-local dnew = --drawing and drawing.new or
-	nil
+		local event = require(script.Event)
+		local ESPs = { }
 
-local topb = inew("ScreenGui", holder.Parent == workspace and plr:WaitForChild("PlayerGui", 9e9) or holder.Parent)
-topb.Name = "TopbarMeasurer"
-topb.ScreenInsets = Enum.ScreenInsets.TopbarSafeInsets
+		local rawset, rawget = rawset, rawget
+		local setmetatable = setmetatable
+		local tick = tick
+		local v2 = Vector2.new
+		local hsv = Color3.fromHSV
+		local c3n = Color3.new
+		local typeof = typeof
+		local concat = table.concat
+		local pack, unpack = table.pack, table.unpack
+		local pcall = pcall
+		local u2 = UDim2.new
+		local v3 = Vector3.new
+		local round = math.round
+		local clamp = math.clamp
 
-local dh = not dnew and inew("ScreenGui", topb.Parent)
-if dh then
-	dh.DisplayOrder = 2147483645
-	dh.ResetOnSpawn = false
-	-- dh.IgnoreGuiInset = true
-	dh.ClipToDeviceSafeArea = false
-	dh.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+		local plr = game:GetService("Players").LocalPlayer
+		local mouse = plr:GetMouse()
 
-	pcall(function()
-		dh.OnTopOfCoreBlur = true
-	end)
-end
+		local drawing = env.Drawing or env.drawing
+		local fromPoint = v2(0, 0)
+		local maxX, maxY = 0, 0
 
-local newLine = dnew and function()
-	return dnew("Line")
-end or function()
-	local line = inew("Frame", dh)
-	line.BorderSizePixel = 0
-	line.Size = u2(0, 1, 0, 1)
-	line.AnchorPoint = v2(0.5, 0.5)
+		local guiServ = game:GetService("GuiService")
+		local opened = guiServ.MenuIsOpen
 
-	return line
-end
+		guiServ.MenuOpened:Connect(function()
+			opened = true
+		end)
 
-local updateLine = dnew and function(line, visible, to, color)
-	line.Visible = visible
-	if not visible then return end
+		guiServ.MenuClosed:Connect(function()
+			opened = false
+		end)
 
-	line.From = fromPoint
-	line.To = to
-	line.Color = color
-	line.Thickness = 1
-end or function(line, visible, to, color)
-	line.Visible = visible
-	if not visible then return end
+		local function memoize(fn)
+    --[[local cache = setmetatable({ }, { __mode = "k" })
 
-	local direction = (to - fromPoint)
-	local center = (to + fromPoint) / 2
-	line.Position = u2(0, center.X, 0, center.Y)
-	line.Rotation = deg(atan2(direction.Y, direction.X))
-	line.Size =  u2(0, direction.Magnitude, 0, 1)
-	line.BackgroundColor3 = color
-end
+    return function(...)
+        local args = pack(...)
+        local key = args.n ~= 0 and concat(args, "\0") or ""
 
-local refresh
-local onUpdate = function(self, idx, val)
-	rawset(self, idx, val)
-	self.Changed:Fire(idx, val)
+        local result = cache[key]
+        if result then
+            return unpack(result, 1, result.n)
+        end
 
-	for _, v in self.Objects do
-		refresh(v)
-	end
-end
+        result = pack(fn(...))
+        cache[key] = result
 
-local time = tick()
-local lastTick = tick()
+        return unpack(result, 1, result.n)
+    end]]
 
-local currentRGBColor = hsv(time % 1, 1, 1)
-
-onUpdate = { __newindex = onUpdate }
-
-local ev = event.new()
-local base = {
-	RGBSpeed = 1,
-	RGBWhite = 0, -- 0-1
-	RGB = false,
-	Tracers = true,
-	FromPoint = "Bottom",
-	Performant = false,
-	ShowDistance = true,
-	Event = ev,
-	-- FPS = 30, -- good balance between laggy and smooth | but I decided to abandon it
-	DistanceGradient = { 100, c3n(1, 0.4, 0.4), c3n(0.4, 1, 0.4) },
-	ClassSettings = setmetatable({ }, {
-		__index = function(self, idx)
-			local tbl = rawget(self, idx)
-			ESPs[idx] = ESPs[idx] or { }
-
-			if not tbl then
-				tbl = setmetatable({
-					Tracers = false,
-					RGB = false,
-					Objects = ESPs[idx],
-					Visible = false,
-					Changed = event.new(),
-					Color = c3n(1, 1, 1),
-					ShowDistance = false,
-				}, onUpdate)
-
-				rawset(self, idx, tbl)
-				ev:Fire(idx, tbl)
-			end
-
-			return tbl
-		end,
-		__newindex = error
-	}),
-	InitClass = function(self, class, options)
-		local class = self.ClassSettings[class]
-		for i, v in options do
-			class[i] = v
+			return fn
 		end
 
-		return class
-	end
-}
+		local deg, atan2 = memoize(math.deg), memoize(math.atan2)
 
-local cam = workspace.CurrentCamera
-local f = 50
-local myPos = cam and cam.CFrame or CFrame.new()
-local target
+		local dnew = --drawing and drawing.new or
+			nil
 
-game:GetService("RunService").Stepped:Connect(function()
-	local currentTick = tick()
-	time += (currentTick - lastTick) * base.RGBSpeed
-	lastTick = currentTick
-	target = plr and plr.Character or cam
+		local topb = inew("ScreenGui", holder.Parent == workspace and plr:WaitForChild("PlayerGui", 9e9) or holder.Parent)
+		topb.Name = "TopbarMeasurer"
+		topb.ScreenInsets = Enum.ScreenInsets.TopbarSafeInsets
 
-	currentRGBColor = hsv(time % 1, 1, 1):Lerp(c3n(1, 1, 1), base.RGBWhite)
-	cam = workspace.CurrentCamera or cam.Parent == workspace and cam or nil
+		local dh = not dnew and inew("ScreenGui", topb.Parent)
+		if dh then
+			dh.DisplayOrder = 2147483645
+			dh.ResetOnSpawn = false
+			-- dh.IgnoreGuiInset = true
+			dh.ClipToDeviceSafeArea = false
+			dh.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-	maxX = (cam and cam.ViewportSize.X or topb.AbsoluteSize.X) + f
-	maxY = (cam and cam.ViewportSize.Y or 0) + f
-
-	if base.FromPoint == "Bottom" then
-		fromPoint = cam and v2(cam.ViewportSize.X / 2, cam.ViewportSize.Y - topb.AbsoluteSize.Y) or v2(0, 0)
-	elseif base.FromPoint == "Top" then
-		fromPoint = cam and v2(cam.ViewportSize.X / 2, -topb.AbsoluteSize.Y) or v2(0, 0)
-	elseif base.FromPoint == "Center" then
-		fromPoint = cam and v2(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2 - topb.AbsoluteSize.Y) or v2(0, 0)
-	elseif typeof(base.FromPoint) == "Vector2" then
-		if base.FromPoint.X <= 1 and base.FromPoint.Y <= 1 and (round(base.FromPoint.X) ~= base.FromPoint.X or base.FromPoint.X % 1 == 0) and (round(base.FromPoint.Y) ~= base.FromPoint.Y or base.FromPoint.Y % 1 == 0) then
-			fromPoint = v2(base.FromPoint.X * cam.ViewportSize.X, base.FromPoint.Y * cam.ViewportSize.Y - topb.AbsoluteSize.Y)
-		else
-			fromPoint = base.FromPoint - v2(0, topb.AbsoluteSize.Y)
+			pcall(function()
+				dh.OnTopOfCoreBlur = true
+			end)
 		end
-	elseif typeof(base.FromPoint) == "UDim2" then
-		local u = base.FromPoint
-		fromPoint = cam and v2(u.X.Scale * cam.ViewportSize.X + u.X.Offset, u.Y.Scale * cam.ViewportSize.Y + u.Y.Offset - topb.AbsoluteSize.Y) or v2(0, 0)
-	else
-		fromPoint = v2(mouse.X, mouse.Y)
-	end
 
-	myPos = plr and plr.Character and plr.Character:GetPivot().Position or cam and cam.CFrame.Position or myPos
-end)
+		local newLine = dnew and function()
+			return dnew("Line")
+		end or function()
+			local line = inew("Frame", dh)
+			line.BorderSizePixel = 0
+			line.Size = u2(0, 1, 0, 1)
+			line.AnchorPoint = v2(0.5, 0.5)
 
-local espCache = { }
-
-local lastDelta = 0
-game:GetService("RunService").RenderStepped:Connect(function(dt)
-	lastDelta = dt
-end)
-
-task.spawn(function()
-	local wait = task.wait
-	local spawn = task.spawn
-	
-	while wait(lastDelta * 1.5) do
-		for _, v in espCache do
-			spawn(refresh, v)
+			return line
 		end
-	end
-end)
 
-local function destroy(self)
-	self = self.Self or self
-	if self.Destroyed then return end
+		local updateLine = dnew and function(line, visible, to, color)
+			line.Visible = visible
+			if not visible then return end
 
-	if self.Object then
-		ESPs[self.Settings.Class][self.Object] = nil
-		espCache[self.Object] = nil
-	end
+			line.From = fromPoint
+			line.To = to
+			line.Color = color
+			line.Thickness = 1
+		end or function(line, visible, to, color)
+			line.Visible = visible
+			if not visible then return end
 
-	self.ESP:Destroy()
-	self.Line:Destroy()
-	
-	for i, v in self.Connections do
-		if v.Connected then
-			v:Disconnect()
-			self.Connections[i] = nil
+			local direction = (to - fromPoint)
+			local center = (to + fromPoint) / 2
+			line.Position = u2(0, center.X, 0, center.Y)
+			line.Rotation = deg(atan2(direction.Y, direction.X))
+			line.Size =  u2(0, direction.Magnitude, 0, 1)
+			line.BackgroundColor3 = color
 		end
-	end
 
-	rawset(self, "Destroyed", true)
-	rawset(self, "ESP", nil)
-	rawset(self, "Connections", nil)
-	rawset(self, "Line", nil)
-end
+		local refresh
+		local onUpdate = function(self, idx, val)
+			rawset(self, idx, val)
+			self.Changed:Fire(idx, val)
 
-local function getVector2(pos)
-	if not cam then return nil end
-
-	local v3 = cam:WorldToViewportPoint(pos)
-	if v3.Z < 0 or base.Performant and (v3.X < -f or v3.X > maxX or v3.Y < -f or v3.Y > maxY) then return nil end
-
-	return v2(v3.X, v3.Y - topb.AbsoluteSize.Y)
-end
-
-local getPosition; getPosition = function(obj)
-	if obj:IsA("Folder") then
-		local pos = v3()
-		local total = 0
-
-		for _, v in obj:GetChildren() do
-			if v:IsA("Model") or v:IsA("BasePart") then
-				pos += getPosition(v)
-				total += 1
+			for _, v in self.Objects do
+				refresh(v)
 			end
 		end
 
-		return pos / total
-	elseif obj:IsA("Camera") then
-		return obj.CFrame.Position
-	end
+		local time = tick()
+		local lastTick = tick()
 
-	return obj:GetPivot(obj).Position
-end
+		local currentRGBColor = hsv(time % 1, 1, 1)
 
-local function paintRichText(text, color3)
-	return "<font color=\"#" .. c3n(clamp(color3.R, 0, 1), clamp(color3.G, 0, 1), clamp(color3.B, 0, 1)):ToHex() .. "\">" .. text .. "</font>"
-end
+		onUpdate = { __newindex = onUpdate }
 
-local function rotateRGB(col)
-	return c3n(col.G, col.R, col.B)
-end
+		local ev = event.new()
+		local base = {
+			RGBSpeed = 1,
+			RGBWhite = 0, -- 0-1
+			RGB = false,
+			Tracers = true,
+			FromPoint = "Bottom",
+			Performant = false,
+			ShowDistance = true,
+			Event = ev,
+			-- FPS = 30, -- good balance between laggy and smooth | but I decided to abandon it
+			DistanceGradient = { 100, c3n(1, 0.4, 0.4), c3n(0.4, 1, 0.4) },
+			ClassSettings = setmetatable({ }, {
+				__index = function(self, idx)
+					local tbl = rawget(self, idx)
+					ESPs[idx] = ESPs[idx] or { }
 
-local null = ""
-local newline = "\n"
+					if not tbl then
+						tbl = setmetatable({
+							Tracers = false,
+							RGB = false,
+							Objects = ESPs[idx],
+							Visible = false,
+							Changed = event.new(),
+							Color = c3n(1, 1, 1),
+							ShowDistance = false,
+						}, onUpdate)
 
-refresh = function(self, pos, vec)
-	self = self.Self or self
+						rawset(self, idx, tbl)
+						ev:Fire(idx, tbl)
+					end
 
-	if self.Destroyed then return end
+					return tbl
+				end,
+				__newindex = error
+			}),
+			InitClass = function(self, class, options)
+				local class = self.ClassSettings[class]
+				for i, v in options do
+					class[i] = v
+				end
 
-	local esp = self.ESP
-	local settings = self.Settings
-	local obj = self.Object
-	local line = self.Line
+				return class
+			end
+		}
 
-	if not obj then return destroy(self) end
-	
-	obj = settings.Adornee or obj
+		local cam = workspace.CurrentCamera
+		local f = 50
+		local myPos = cam and cam.CFrame or CFrame.new()
+		local target
 
-	pos = pos or getPosition(obj)
-	vec = vec or getVector2(pos)
+		game:GetService("RunService").Stepped:Connect(function()
+			local currentTick = tick()
+			time += (currentTick - lastTick) * base.RGBSpeed
+			lastTick = currentTick
+			target = plr and plr.Character or cam
 
-	local class = settings.Class
-	local classSettings = base.ClassSettings[class]
-	local visible = vec and settings.Visible and classSettings.Visible
+			currentRGBColor = hsv(time % 1, 1, 1):Lerp(c3n(1, 1, 1), base.RGBWhite)
+			cam = workspace.CurrentCamera or cam.Parent == workspace and cam or nil
 
-	esp.Enabled = visible
-	
-	local highlight = esp.Highlight
-	highlight.Enabled = visible and settings.Highlight
+			maxX = (cam and cam.ViewportSize.X or topb.AbsoluteSize.X) + f
+			maxY = (cam and cam.ViewportSize.Y or 0) + f
 
-	if not visible then
-		return updateLine(line, false)
-	end
+			if base.FromPoint == "Bottom" then
+				fromPoint = cam and v2(cam.ViewportSize.X / 2, cam.ViewportSize.Y - topb.AbsoluteSize.Y) or v2(0, 0)
+			elseif base.FromPoint == "Top" then
+				fromPoint = cam and v2(cam.ViewportSize.X / 2, -topb.AbsoluteSize.Y) or v2(0, 0)
+			elseif base.FromPoint == "Center" then
+				fromPoint = cam and v2(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2 - topb.AbsoluteSize.Y) or v2(0, 0)
+			elseif typeof(base.FromPoint) == "Vector2" then
+				if base.FromPoint.X <= 1 and base.FromPoint.Y <= 1 and (round(base.FromPoint.X) ~= base.FromPoint.X or base.FromPoint.X % 1 == 0) and (round(base.FromPoint.Y) ~= base.FromPoint.Y or base.FromPoint.Y % 1 == 0) then
+					fromPoint = v2(base.FromPoint.X * cam.ViewportSize.X, base.FromPoint.Y * cam.ViewportSize.Y - topb.AbsoluteSize.Y)
+				else
+					fromPoint = base.FromPoint - v2(0, topb.AbsoluteSize.Y)
+				end
+			elseif typeof(base.FromPoint) == "UDim2" then
+				local u = base.FromPoint
+				fromPoint = cam and v2(u.X.Scale * cam.ViewportSize.X + u.X.Offset, u.Y.Scale * cam.ViewportSize.Y + u.Y.Offset - topb.AbsoluteSize.Y) or v2(0, 0)
+			else
+				fromPoint = v2(mouse.X, mouse.Y)
+			end
 
-	local text = esp.TextLabel
-	local topText = esp.TopTextLabel
-	local rgb = (settings.RGB or base.RGB or classSettings.RGB) and currentRGBColor
+			myPos = plr and plr.Character and plr.Character:GetPivot().Position or cam and cam.CFrame.Position or myPos
+		end)
 
-	local color = rgb
-	if not color then
-		color = settings.Color or classSettings.Color or c3n(1, 1, 1)
-		
-		local rl = settings.RotationLevel
-		if rl then
-			color = color:Lerp(rotateRGB(color), rl)
+		local espCache = { }
+
+		local lastDelta = 0
+		game:GetService("RunService").RenderStepped:Connect(function(dt)
+			lastDelta = dt
+		end)
+
+		task.spawn(function()
+			local wait = task.wait
+			local spawn = task.spawn
+
+			while wait(lastDelta * 1.5) do
+				for _, v in espCache do
+					spawn(refresh, v)
+				end
+			end
+		end)
+
+		local function destroy(self)
+			self = self.Self or self
+			if self.Destroyed then return end
+
+			if self.Object then
+				ESPs[self.Settings.Class][self.Object] = nil
+				espCache[self.Object] = nil
+			end
+
+			self.ESP:Destroy()
+			self.Line:Destroy()
+
+			for i, v in self.Connections do
+				if v.Connected then
+					v:Disconnect()
+					self.Connections[i] = nil
+				end
+			end
+
+			rawset(self, "Destroyed", true)
+			rawset(self, "ESP", nil)
+			rawset(self, "Connections", nil)
+			rawset(self, "Line", nil)
 		end
-	end
 
-	esp.Circle.BackgroundColor3 = color
-	esp.StudsOffsetWorldSpace = pos
+		local function getVector2(pos)
+			if not cam then return nil end
 
-	highlight.FillColor = color
-	highlight.OutlineColor = color
-	highlight.Adornee = typeof(settings.HighlightAdornee) == "Instance" and settings.HighlightAdornee or obj
-	highlight.Enabled = settings.Highlight
+			local v3 = cam:WorldToViewportPoint(pos)
+			if v3.Z < 0 or base.Performant and (v3.X < -f or v3.X > maxX or v3.Y < -f or v3.Y > maxY) then return nil end
 
-	text.Text = settings.Text
-	text.TextColor3 = color
-
-	local afterText = null
-	
-	if settings.ShowDistance or classSettings.ShowDistance and base.ShowDistance and target then
-		local dist = (myPos - pos).Magnitude
-			
-		local gradient = settings.DistanceGradient or classSettings.DistanceGradient or base.DistanceGradient
-		afterText = newline .. paintRichText("[ " .. (dist >= 10 and round(dist) or ("%.1f"):format(dist)) .. " ]", gradient[2]:Lerp(gradient[3], clamp(dist / gradient[1], 0, 1)))
-	end
-
-	topText.Text = settings.TopText .. afterText
-	topText.TextColor3 = color
-
-	local tracerEnabled = not opened and (settings.Tracer or classSettings.Tracers and base.Tracers)
-	if opened or not (settings.Tracer or classSettings.Tracers and base.Tracers) then
-		return updateLine(line, false)
-	end
-
-	updateLine(line, true, vec, color)
-end
-
-local ESPBaseSettings = {
-	Highlight = true,
-	HighlightAdornee = false,
-	Tracer = false,
-	Text = "",
-	TopText = "",
-	Visible = true,
-	ShowDistance = false,
-	RGB = false,
-	DontDelete = false,
-	Class = "_Default",
-
-	Refresh = refresh,
-	Destroy = destroy
-}
-
-local objectBase = { __index = function(self, idx)
-	return self.Settings[idx] or rawget(self, idx)
-end, __newindex = function(self, idx, val)
-	self.Settings[idx] = val
-	refresh(self)
-end }
-
-local function newObject(object, settings, class)
-	settings = settings or { }
-	for i, v in ESPBaseSettings do
-		if settings[i] == nil then
-			settings[i] = v
+			return v2(v3.X, v3.Y - topb.AbsoluteSize.Y)
 		end
-	end
-	
-	if class then
-		settings.Class = class
-	end
 
-	settings.Settings = settings
+		local getPosition; getPosition = function(obj)
+			if obj:IsA("Attachment") then
+				return obj.WorldPosition
+			elseif obj:IsA("Folder") then
+				local pos = v3()
+				local total = 0
 
-	local v = espCache[object]
-	if v then
-		ESPs[v.Settings.Class][object] = nil
-		ESPs[settings.Class][object] = v
-		rawset(v, "Settings", settings)
+				for _, v in obj:GetChildren() do
+					if v:IsA("Model") or v:IsA("BasePart") then
+						pos += getPosition(v)
+						total += 1
+					end
+				end
 
-		refresh(v)
-		return v
-	end
+				return total > 0 and pos / total or v3()
+			elseif obj:IsA("Camera") then
+				return obj.CFrame.Position
+			end
 
-	local espObj = ESPObj:Clone()
-	espObj.Parent = holder
-
-	local tracerLine = newLine()
-	updateLine(tracerLine, false)
-
-	v = setmetatable({ Object = object, Settings = settings, ESP = espObj, Line = tracerLine, Destroy = destroy, Connections = { object.AncestryChanged:Connect(function()
-		if not object:IsDescendantOf(workspace) and not v.DontDelete then
-			v:Destroy()
+			return obj:GetPivot().Position
 		end
-	end), object:GetPropertyChangedSignal("Parent"):Connect(function()
-		if not object:IsDescendantOf(workspace) and not v.DontDelete then
-			v:Destroy()
+
+		local function paintRichText(text, color3)
+			return "<font color=\"#" .. c3n(clamp(color3.R, 0, 1), clamp(color3.G, 0, 1), clamp(color3.B, 0, 1)):ToHex() .. "\">" .. text .. "</font>"
 		end
-	end) }}, objectBase)
 
-	settings.Self = v
+		local function rotateRGB(col)
+			return c3n(col.G, col.R, col.B)
+		end
 
-	ESPs[settings.Class] = ESPs[settings.Class] or { }
-	ESPs[settings.Class][object] = v
-	espCache[object] = v
+		local null = ""
+		local newline = "\n"
 
-	if object:IsDescendantOf(workspace) then
-		refresh(v)
-	else
-		v:Destroy()
-	end
+		refresh = function(self, pos, vec)
+			self = self.Self or self
 
-	return v
-end
+			if self.Destroyed then return end
 
-base.new = newObject
-global[n] = base
+			local esp = self.ESP
+			local settings = self.Settings
+			local obj = self.Object
+			local line = self.Line
 
-return base
+			if not obj then return destroy(self) end
+
+			obj = typeof(settings.Adornee) == "Instance" and settings.Adornee or obj
+
+			pos = pos or getPosition(obj)
+			vec = vec or getVector2(pos)
+
+			local class = settings.Class
+			local classSettings = base.ClassSettings[class]
+			local visible = vec and settings.Visible and classSettings.Visible
+
+			esp.Enabled = visible
+
+			local highlight = esp.Highlight
+			highlight.Enabled = visible and settings.Highlight
+
+			if not visible then
+				return updateLine(line, false)
+			end
+
+			local text = esp.TextLabel
+			local topText = esp.TopTextLabel
+			local rgb = (settings.RGB or base.RGB or classSettings.RGB) and currentRGBColor
+
+			local color = rgb
+			if not color then
+				color = settings.Color or classSettings.Color or c3n(1, 1, 1)
+
+				local rl = settings.RotationLevel
+				if rl then
+					color = color:Lerp(rotateRGB(color), rl)
+				end
+			end
+
+			esp.Circle.BackgroundColor3 = color
+			esp.StudsOffsetWorldSpace = pos
+
+			highlight.FillColor = color
+			highlight.OutlineColor = color
+			highlight.Adornee = typeof(settings.HighlightAdornee) == "Instance" and settings.HighlightAdornee or obj
+			highlight.Enabled = settings.Highlight
+
+			text.Text = settings.Text
+			text.TextColor3 = color
+
+			local afterText = null
+
+			if settings.ShowDistance or classSettings.ShowDistance and base.ShowDistance and target then
+				local dist = (myPos - pos).Magnitude
+
+				local gradient = settings.DistanceGradient or classSettings.DistanceGradient or base.DistanceGradient
+				afterText = newline .. paintRichText("[ " .. (dist >= 10 and round(dist) or ("%.1f"):format(dist)) .. " ]", gradient[2]:Lerp(gradient[3], clamp(dist / gradient[1], 0, 1)))
+			end
+
+			topText.Text = settings.TopText .. afterText
+			topText.TextColor3 = color
+
+			local tracerEnabled = not opened and (settings.Tracer or classSettings.Tracers and base.Tracers)
+			if opened or not (settings.Tracer or classSettings.Tracers and base.Tracers) then
+				return updateLine(line, false)
+			end
+
+			updateLine(line, true, vec, color)
+		end
+
+		local ESPBaseSettings = {
+			Highlight = true,
+			HighlightAdornee = false,
+			Tracer = false,
+			Text = "",
+			TopText = "",
+			Visible = true,
+			ShowDistance = false,
+			RGB = false,
+			Adornee = false,
+			DontDelete = false,
+			Class = "_Default",
+
+			Refresh = refresh,
+			Destroy = destroy
+		}
+
+		local objectBase = { __index = function(self, idx)
+			local st = self.Settings[idx]
+			return st ~= nil and st or rawget(self, idx)
+		end, __newindex = function(self, idx, val)
+			self.Settings[idx] = val
+			refresh(self)
+		end }
+
+		local function newObject(object, settings, class)
+			settings = settings or { }
+			for i, v in ESPBaseSettings do
+				if settings[i] == nil then
+					settings[i] = v
+				end
+			end
+
+			if class then
+				settings.Class = class
+			end
+
+			settings.Settings = settings
+
+			local v = espCache[object]
+			if v then
+				ESPs[v.Settings.Class][object] = nil
+				ESPs[settings.Class][object] = v
+				rawset(v, "Settings", settings)
+
+				refresh(v)
+				return v
+			end
+
+			local espObj = ESPObj:Clone()
+			espObj.Parent = holder
+
+			local tracerLine = newLine()
+			updateLine(tracerLine, false)
+
+			v = setmetatable({ Object = object, Settings = settings, ESP = espObj, Line = tracerLine, Destroy = destroy, Connections = { object.AncestryChanged:Connect(function()
+				if not object:IsDescendantOf(workspace) and not v.DontDelete then
+					v:Destroy()
+				end
+			end), object:GetPropertyChangedSignal("Parent"):Connect(function()
+				if not object:IsDescendantOf(workspace) and not v.DontDelete then
+					v:Destroy()
+				end
+			end) }}, objectBase)
+
+			settings.Self = v
+
+			ESPs[settings.Class] = ESPs[settings.Class] or { }
+			ESPs[settings.Class][object] = v
+			espCache[object] = v
+
+			if object:IsDescendantOf(workspace) or v.DontDelete then
+				refresh(v)
+			else
+				v:Destroy()
+			end
+
+			return v
+		end
+
+		base.new = newObject
+		global[n] = base
+
+		return base
 	end;
 end;
 
 -- YOUR CODE DOWN HERE --
 
 local obj = objects["Instance0"];
-return require(obj);
+return require(obj)
