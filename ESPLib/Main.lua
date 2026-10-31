@@ -778,10 +778,11 @@ refresh = function(self, pos, vec)
             or classSettings.RGB
     )
 
-    local updateColor =
-        all
-        or dirty.color
-        or rawget(self, "_wasRGB") ~= rgbActive
+	local updateColor =
+		all
+		or dirty.color
+		or rgbActive
+		or rawget(self, "_wasRGB") ~= rgbActive
 
     local color = rawget(self, "_lastColor")
 
