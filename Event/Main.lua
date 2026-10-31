@@ -31,7 +31,7 @@ local connectionBase = {
 			rawset(self, "Connected", false)
 			freeze(self)
 
-			self.Parent:Cleanup()
+			rawset(self.Parent, "_Dirty", true)
 		end
 	end,
 	Fire = function(self, ...)
@@ -68,18 +68,28 @@ local eventBase = {
 		repeat quickEvent:Wait() until result
 		return unpack(result, 1, result.n)
 	end,
-	Cleanup = function(self) -- usually not needed to be called manually
-		local cons = self._Connections
-		local i, ln = 1, #cons
+	Cleanup = function(self)
+		if not self._Dirty then
+			return
+		end
 
-		while i <= ln do
-			if not cons[i] or not cons[i].Connected then
-				remove(cons, i)
-				ln -= 1
-			else
-				i += 1
+		local cons = self._Connections
+		local write = 1
+
+		for read = 1, #cons do
+			local connection = cons[read]
+
+			if connection and connection.Connected then
+				cons[write] = connection
+				write += 1
 			end
 		end
+
+		for i = write, #cons do
+			cons[i] = nil
+		end
+
+		rawset(self, "_Dirty", false)
 	end,
 
 	Fire = function(self, ...)
@@ -93,16 +103,22 @@ local eventBase = {
 		end
 	end,
 	DisconnectAll = function(self)
-		for i, v in self._Connections do
+		for _, v in self._Connections do
 			v:Disconnect()
 		end
+
+		self:Cleanup()
 	end
 }
 
 eventBase = { __index = eventBase, __tostring = function() return "Event" end, __newindex = function(self, key, value) if key ~= "Enabled" then error() end rawset(self, key, value) end }
 local lib = setmetatable({
 	new = function()
-		return smt({ _Connections = { }, Enabled = true }, eventBase)
+		return smt({
+			_Connections = {},
+			_Dirty = false,
+			Enabled = true
+		}, eventBase)
 	end,
 	RaceEvents = function(self, ...)
 		local events = { ... }
@@ -154,7 +170,7 @@ local rs = game:GetService("RunService")
 local r1, r2, r3 = rs.RenderStepped, rs.Heartbeat, rs.Stepped
 local last = tick()
 local fire = clock.Fire
-local maxDefer = 10
+local maxDefer = 2
 
 clock:Connect(function(isDefer, dontFire)
 	local current = tick()
