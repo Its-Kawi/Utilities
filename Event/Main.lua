@@ -69,24 +69,14 @@ local eventBase = {
 		return unpack(result, 1, result.n)
 	end,
 	Cleanup = function(self)
-		if not self._Dirty then
-			return
-		end
+		if not self._Dirty then return end
 
 		local cons = self._Connections
-		local write = 1
-
-		for read = 1, #cons do
-			local connection = cons[read]
-
-			if connection and connection.Connected then
-				cons[write] = connection
-				write += 1
+		for i = #cons, 1, -1 do
+			local v = cons[i]
+			if not v or not v.Connected then
+				remove(cons, i)
 			end
-		end
-
-		for i = write, #cons do
-			cons[i] = nil
 		end
 
 		rawset(self, "_Dirty", false)
