@@ -10,6 +10,7 @@ local utils = {
 	EditableCursor = "Util",
 	KeyEnums = "Util",
 	SimpleSerializer = "Util",
+	WordList = "Util",
 
 	Desync = "Url",
 	UI = "Url",
@@ -59,7 +60,7 @@ local shortcuts = {
 	SS = "SimpleSerializer"
 }
 
-local preload = { "Event", "Physics", "Desync", "Typer", "Other", "Fire", "KeyEnums", "SimpleSerializer" }
+local preload = { "Event", "Physics", "Desync", "Typer", "Other", "Fire", "KeyEnums", "SimpleSerializer", "WordList" }
 
 local global = getgenv and getgenv() or _G
 local globalKey = "QKUtil"
