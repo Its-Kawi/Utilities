@@ -94,7 +94,6 @@ end
 local function httpGet(url, headers, retry)
 	local tries = 0
 	local allowed = tonumber(retry) or retry == true and 1 / 0 or 1
-	local retry = allowed
 
 	local r, s	
 	while tries <= allowed do
@@ -105,7 +104,7 @@ local function httpGet(url, headers, retry)
 			s = r.Success and r.StatusCode <= 400
 			r = r.Body or ""
 		else
-			s, r = pcall(game.HttpGet, game, url, true, headers)
+			s, r = pcall(game.HttpGet, game, url, true)
 		end
 
 		if not retry or s then
@@ -323,7 +322,6 @@ local util = setmetatable({
 	HttpPost = function(self, url, body, headers, retry)
 		local tries = 0
 		local allowed = tonumber(retry) or retry == true and 1 / 0 or 1
-		local retry = allowed
 
 		local r, s	
 		while tries <= allowed do
@@ -334,7 +332,7 @@ local util = setmetatable({
 				s = r.Success and r.StatusCode <= 400
 				r = r.Body or ""
 			else
-				s, r = pcall(game.HttpPost, game, url, body, headers)
+				s, r = pcall(game.HttpPost, game, url, body)
 			end
 
 			if not retry or s then
