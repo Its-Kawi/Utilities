@@ -232,7 +232,7 @@ local function updCheck(hash)
 	local extFile = cacheFolder .. hash
 	if IF(extFile) then
 		local n = tonumber(rf(extFile))
-		if n and n > expiryTime then
+		if n and tick() - n > expiryTime then
 			pcall(recurviseDelete, extFile)
 			pcall(recurviseDelete, utilsFolder .. hash .. ext)
 		end
@@ -260,9 +260,6 @@ function downloadModule(name, forceDownload)
 		pcall(wf, utilsFolder .. hash .. ext, "-- " .. moduleName .. ext .."\n" .. moduleContents)
 		pcall(wf, cacheFolder .. hash, tostring(tick()))
 		
-		local cached = moduleCache[moduleName]
-		if cached then return cached end
-
 		moduleCache[moduleName] = loadTest
 		return loadTest
 	else
@@ -312,6 +309,8 @@ spawn(function()
 end)
 
 local returnCache = { }
+local moduleResultCache = { }
+
 local util = setmetatable({
 	Download = function(self, name) if not self.Modules then error("Call via ':' next time!", 0) end return bruteforceLoadModule(name) end,
 	Modules = modules,
@@ -357,7 +356,20 @@ local util = setmetatable({
 		local c = returnCache[safeName]
 		if c then return c end
 
-		local retF = function(self, ...) return self:Download(name)(...) end
+		local retF = function(self, ...)
+			local moduleName = getModuleInfo(name)
+			local cached = moduleResultCache[moduleName]
+
+			if cached then
+				return unpack(cached, 1, cached.n)
+			end
+
+			local results = pack(self:Download(name)(...))
+			moduleResultCache[moduleName] = results
+
+			return unpack(results, 1, results.n)
+		end
+		
 		returnCache[safeName] = retF
 
 		return retF
