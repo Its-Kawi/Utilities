@@ -81,14 +81,22 @@ local utilityPrefix = "-- This is the main utility loader. Its used for quickly 
 local pack, remove, unpack, wait = table.pack, table.remove, unpack or table.unpack, task and task.wait or wait
 
 local recurviseDelete; function recurviseDelete(name)
-	pcall(df, name)
-	pcall(DF, name)
-	
 	if If(name) then
 		for _, v in lf(name) do
 			recurviseDelete(v)
 		end
 	end
+
+	pcall(df, name)
+	pcall(DF, name)
+end
+
+local cacheDeleted = false
+local function deleteCache()
+	if cacheDeleted then return end
+	
+	pcall(recurviseDelete, coreFolder:sub(1, -2))
+	pcall(recurviseDelete, "FireLibrary/Library" .. ext) -- force UI library to update
 end
 
 local function httpGet(url, headers, retry)
@@ -128,16 +136,18 @@ if wf and rf and mf and df and IF and DF and lf and If then
 			local loadTest = loadstring(self)
 
 			if loadTest then
-				pcall(recurviseDelete, coreFolder:sub(1, -2))
-				pcall(recurviseDelete, "FireLibrary/Library" .. ext) -- force UI library to update
+				deleteCache()
+				cacheDeleted = false
 				
 				while If(coreFolder:sub(1, -2)) or IF("FireLibrary/Library" .. ext) do
 					wait()
 				end
-
-				pcall(wf, utilFile, utilityPrefix .. self)
-				pcall(wf, utilVerCheckFile, tostring(tick()))
-
+				
+				if not cacheDeleted then
+					pcall(wf, utilFile, utilityPrefix .. self)
+					pcall(wf, utilVerCheckFile, tostring(tick()))
+				end
+					
 				return loadTest()
 			end
 		end
@@ -145,7 +155,7 @@ if wf and rf and mf and df and IF and DF and lf and If then
 
 	spawn(function()
 		local self, s = httpGet(subUrls.Util .. "Utility/Main" .. ext)
-		if s and loadstring(self) then
+		if s and loadstring(self) and not cacheDeleted then
 			pcall(mf, coreFolder:sub(1, -2))
 			pcall(mf, utilsFolder:sub(1, -2))
 			pcall(mf, cacheFolder:sub(1, -2))
@@ -153,10 +163,12 @@ if wf and rf and mf and df and IF and DF and lf and If then
 			pcall(wf, utilVerCheckFile, tostring(tick()))
 		end
 	end)
-
-	pcall(mf, coreFolder:sub(1, -2))
-	pcall(mf, utilsFolder:sub(1, -2))
-	pcall(mf, cacheFolder:sub(1, -2))
+	
+	if not cacheDeleted then
+		pcall(mf, coreFolder:sub(1, -2))
+		pcall(mf, utilsFolder:sub(1, -2))
+		pcall(mf, cacheFolder:sub(1, -2))
+	end
 end
 
 if global[globalKey] then
@@ -256,9 +268,11 @@ function downloadModule(name, forceDownload)
 	
 	local loadTest = loadstring(moduleContents)
 	if loadTest then
-		pcall(wf, utilsFolder .. hash .. ext, "-- " .. moduleName .. ext .."\n" .. moduleContents)
-		pcall(wf, cacheFolder .. hash, tostring(tick()))
-		
+		if not cacheDeleted then
+			pcall(wf, utilsFolder .. hash .. ext, "-- " .. moduleName .. ext .."\n" .. moduleContents)
+			pcall(wf, cacheFolder .. hash, tostring(tick()))
+		end
+			
 		moduleCache[moduleName] = loadTest
 		return loadTest
 	else
@@ -279,7 +293,7 @@ local function bruteforceLoadModule(name)
 		wait()
 		
 		if func:find("not found") then
-			return function() return warn(func) end
+			return function() return error(func, 0) end
 		end
 	end
 end
@@ -294,10 +308,12 @@ freeze(modules)
 local find = table.find
 spawn(function()
 	local function cacheModule(module)
+		if cacheDeleted then return end
 		pcall(downloadModule, module, true)
+		if cacheDeleted then return end
 		local s, f = pcall(bruteforceLoadModule, module)
 
-		if s and find(preload, module) then
+		if s and find(preload, module) and not cacheDeleted then
 			pcall(f)
 		end
 	end
@@ -312,6 +328,7 @@ local moduleResultCache = { }
 
 local util = setmetatable({
 	Download = function(self, name) if not self.Modules then error("Call via ':' next time!", 0) end return bruteforceLoadModule(name) end,
+	DeleteCache = deleteCache,
 	Modules = modules,
 	Utililites = modules,
 	Utils = modules,
