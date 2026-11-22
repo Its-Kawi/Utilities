@@ -95,6 +95,7 @@ local cacheDeleted = false
 local function deleteCache()
 	if cacheDeleted then return end
 	
+	cacheDeleted = true
 	pcall(recurviseDelete, coreFolder:sub(1, -2))
 	pcall(recurviseDelete, "FireLibrary/Library" .. ext) -- force UI library to update
 end
@@ -109,9 +110,9 @@ local function httpGet(url, headers, retry)
 
 		if re then
 			r = re({ Url = url, Method = "GET", Headers = headers })
-			s = r.Success and r.StatusCode <= 400
-			r = r.Body or ""
+			s = r.Success and r.StatusCode < 400
 			c = r.StatusCode
+			r = r.Body or ""
 		else
 			s, r = pcall(game.HttpGet, game, url, true)
 		end
@@ -120,7 +121,7 @@ local function httpGet(url, headers, retry)
 			return r, s, c or s and 200 or 400
 		end
 		
-		if tries < allowed then
+		if tries <= allowed then
 			wait()
 		end
 	end
@@ -326,6 +327,13 @@ end)
 
 local returnCache = { }
 local moduleResultCache = { }
+local httpGetCache = { }
+local ss
+local http = game:GetService("HttpService")
+local httpCacheRoute = "HTTPCache"
+local cacheExpiry = 60 * 60 * 4
+local floor = math.floor
+local buzyCacheKeys = { }
 
 local util = setmetatable({
 	Download = function(self, name) if not self.Modules then error("Call via ':' next time!", 0) end return bruteforceLoadModule(name) end,
@@ -334,10 +342,25 @@ local util = setmetatable({
 	Utililites = modules,
 	Utils = modules,
 
-	HttpGet = function(self, url, headers, retry)
-		return httpGet(url, headers, retry)
+	HttpGetAsync = function(self, url, headers, retry, _cacheKey)
+		if _cacheKey then
+			buzyCacheKeys[_cacheKey] = true
+		end
+		
+		local a, b, c = httpGet(url, headers, retry)
+		
+		if _cacheKey then
+			httpGetCache[_cacheKey] = { floor(tick()), a, c }
+			buzyCacheKeys[_cacheKey] = nil
+		
+			if ss and wf and b then
+				wf(coreFolder .. httpCacheRoute, ss.serialize(httpGetCache))
+			end
+		end
+		
+		return a, b, c
 	end,
-	HttpPost = function(self, url, body, headers, retry)
+	HttpPostAsync = function(self, url, body, headers, retry)
 		local tries = 0
 		local allowed = tonumber(retry) or retry == true and 1 / 0 or 1
 
@@ -347,9 +370,9 @@ local util = setmetatable({
 
 			if re then
 				r = re({ Url = url, Method = "POST", Body = body, Headers = headers })
-				s = r.Success and r.StatusCode <= 400
-				r = r.Body or ""
+				s = r.Success and r.StatusCode < 400
 				c = r.StatusCode
+				r = r.Body or ""
 			else
 				s, r = pcall(game.HttpPost, game, url, body)
 			end
@@ -358,13 +381,30 @@ local util = setmetatable({
 				return r, s, c or s and 200 or 400
 			end
 
-			if tries < allowed then
+			if tries <= allowed then
 				wait()
 			end
 		end
 
 		return r, s, c or s and 200 or 400
-	end
+	end,
+	HttpPost = function(self, ...)
+		return self:HttpPostAsync(...)
+	end,
+	HttpGet = function(self, url, headers, retry)
+		local cacheKey = url .. http:JSONEncode(headers or { })
+		local cached = httpGetCache[cacheKey]
+		if cached and tick() - cached[1] < cacheExpiry then
+			if not buzyCacheKeys[cacheKey] then
+				spawn(self.HttpGetAsync, self, url, headers, retry, cacheKey)
+			end
+			
+			return cached[2], true, cached[3]
+		end
+		
+		httpGetCache[cacheKey] = nil
+		return self:HttpGetAsync(url, headers, retry, cacheKey)
+	end,
 }, freeze({
 	__index = function(self, name)
 		local safeName = name:gsub("[\n\r\f\t\0 ]", ""):lower()
@@ -394,6 +434,35 @@ local util = setmetatable({
 	__newindex = error,
 	__metatable = getmetatable(game)
 }))
+
+spawn(function()
+	if not pcall(function()
+		ss = util:SimpleSerializer()
+		
+		if IF(coreFolder .. httpCacheRoute) then
+			local newEntries = httpGetCache
+			httpGetCache = ss.deserialize(rf(coreFolder .. httpCacheRoute))
+				
+			for i, v in newEntries do
+				httpGetCache[i] = v
+			end
+			
+			for i, v in httpGetCache do
+				if tick() - v[1] > cacheExpiry then
+					httpGetCache[i] = nil
+				end
+			end
+			
+			wf(coreFolder .. httpCacheRoute, ss.serialize(httpGetCache))
+		else
+			error()
+		end
+	end) then
+		if wf and ss then
+			wf(coreFolder .. httpCacheRoute, ss.serialize({ }))
+		end
+	end
+end)
 
 global[globalKey] = util
 
