@@ -103,7 +103,7 @@ local function httpGet(url, headers, retry)
 	local tries = 0
 	local allowed = tonumber(retry) or retry == true and 1 / 0 or 1
 
-	local r, s	
+	local r, s, c
 	while tries <= allowed do
 		tries += 1
 
@@ -111,12 +111,13 @@ local function httpGet(url, headers, retry)
 			r = re({ Url = url, Method = "GET", Headers = headers })
 			s = r.Success and r.StatusCode <= 400
 			r = r.Body or ""
+			c = r.StatusCode
 		else
 			s, r = pcall(game.HttpGet, game, url, true)
 		end
 
 		if not retry or s then
-			return r, s
+			return r, s, c or s and 200 or 400
 		end
 		
 		if tries < allowed then
@@ -124,7 +125,7 @@ local function httpGet(url, headers, retry)
 		end
 	end
 
-	return r, s
+	return r, s, c or s and 200 or 400
 end
 
 local expiryTime = 60 * 60 * 4 -- 4 hours
@@ -340,7 +341,7 @@ local util = setmetatable({
 		local tries = 0
 		local allowed = tonumber(retry) or retry == true and 1 / 0 or 1
 
-		local r, s	
+		local r, s, c
 		while tries <= allowed do
 			tries += 1
 
@@ -348,12 +349,13 @@ local util = setmetatable({
 				r = re({ Url = url, Method = "POST", Body = body, Headers = headers })
 				s = r.Success and r.StatusCode <= 400
 				r = r.Body or ""
+				c = r.StatusCode
 			else
 				s, r = pcall(game.HttpPost, game, url, body)
 			end
 
 			if not retry or s then
-				return r, s
+				return r, s, c or s and 200 or 400
 			end
 
 			if tries < allowed then
@@ -361,7 +363,7 @@ local util = setmetatable({
 			end
 		end
 
-		return r, s
+		return r, s, c or s and 200 or 400
 	end
 }, freeze({
 	__index = function(self, name)
